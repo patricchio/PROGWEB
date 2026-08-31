@@ -97,13 +97,12 @@
                         <span class="scenario-label">Scenario originale</span>
                         <p>{$game->state.last_scenario|default:$game->state.scenario}</p>
                     </div>
-                    <h2>{$game->state.last_narration}</h2>
                     <ul class="result-list" data-verdict-text>
                         {foreach $game->state.last_results as $result}
                             <li class="result-{if $result.outcome === 'SAFE'}safe{else}danger{/if}">
                                 <div><strong>{$result.username}</strong><span>{if $result.outcome === 'SAFE'}SOPRAVVIVE{else}MUORE · −1 VITA{/if}</span></div>
                                 <blockquote>“{$result.answer|default:'Nessuna risposta'}”</blockquote>
-                                <p>{$result.story|default:$result.reason}</p>
+                                <p>{$result.story}</p>
                                 <small>Vite rimaste: {$result.lives}</small>
                             </li>
                         {/foreach}

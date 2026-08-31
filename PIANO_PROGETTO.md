@@ -424,8 +424,8 @@ Esempio semplificato:
     "12": "Cerco di sigillare la falla."
   },
   "last_results": [
-    {"user_id": 7, "outcome": "SAFE", "reason": "La tuta dispone di ossigeno."},
-    {"user_id": 12, "outcome": "LOSE_LIFE", "reason": "La falla è troppo grande."}
+    {"player_id": 7, "outcome": "SAFE", "story": "Anna usa la tuta e riesce a superare il pericolo."},
+    {"player_id": 12, "outcome": "LOSE_LIFE", "story": "Luca prova a sigillare la falla, ma viene sopraffatto e perde una vita."}
   ],
   "history": []
 }
@@ -502,7 +502,7 @@ La prima chiamata valuta scenario e risposta:
 ```json
 {
   "results": [
-    {"player_id": 7, "outcome": "SAFE", "reason": "Il piano affronta il pericolo."}
+    {"player_id": 7, "outcome": "SAFE"}
   ]
 }
 ```
@@ -513,10 +513,9 @@ Per ogni giocatore l'AI deve restituire JSON in questo formato:
 
 ```json
 {
-  "narration": "La sirena continua a suonare...",
   "results": [
-    {"player_id": 7, "story": "Anna usa la tuta e attraversa il corridoio senza respirare il gas."},
-    {"player_id": 12, "story": "Luca prova a chiudere la falla, ma viene trascinato via e perde una vita."}
+    {"player_id": 7, "story": "Narrazione individuale di 4-6 frasi su come Anna sopravvive."},
+    {"player_id": 12, "story": "Narrazione individuale di 4-6 frasi su come Luca perde una vita."}
   ]
 }
 ```
@@ -527,7 +526,7 @@ PHP accetta la risposta solo se:
 - ogni giocatore atteso compare una sola volta;
 - non compaiono giocatori inventati;
 - l'esito è `SAFE` oppure `LOSE_LIFE`;
-- ogni motivazione o racconto richiesto è presente.
+- ogni racconto individuale richiesto è presente.
 
 Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Il livello di follia modifica la temperatura del modello, non la lunghezza e non la probabilità prefissata di perdere. Gli scenari generati restano entro 35 parole e 2-3 frasi anche a follia 3.
 

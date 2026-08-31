@@ -113,7 +113,7 @@ final class EGame
         $this->state['phase'] = 'EVALUATING';
     }
 
-    public function applyResults(array $results, string $narration, string $source = 'fallback'): void
+    public function applyResults(array $results, string $source = 'fallback'): void
     {
         if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'EVALUATING') {
             throw new DomainException('Il turno non può essere valutato.');
@@ -136,7 +136,6 @@ final class EGame
             $missedDeadline = str_starts_with((string) $player['answer'], '[NESSUNA RISPOSTA');
             if ($missedDeadline) {
                 $result['outcome'] = 'LOSE_LIFE';
-                $result['story'] = $player['username'] . ' resta immobile mentre il pericolo avanza. Senza una risposta entro il tempo, perde inevitabilmente una vita.';
             }
             if ($result['outcome'] === 'LOSE_LIFE') {
                 $player['lives'] = max(0, (int) $player['lives'] - 1);
@@ -146,8 +145,7 @@ final class EGame
                 'username' => (string) $player['username'],
                 'outcome' => (string) $result['outcome'],
                 'answer' => (string) $player['answer'],
-                'story' => (string) ($result['story'] ?? $result['reason']),
-                'reason' => (string) ($result['reason'] ?? ''),
+                'story' => (string) ($result['story'] ?? ''),
                 'lives' => (int) $player['lives'],
             ];
             $player['answer'] = null;
@@ -157,12 +155,10 @@ final class EGame
         $record = [
             'round' => (int) $this->state['round'],
             'scenario' => (string) $this->state['scenario'],
-            'narration' => $narration,
             'results' => $roundResults,
         ];
         $this->state['last_results'] = $roundResults;
         $this->state['last_scenario'] = (string) $this->state['scenario'];
-        $this->state['last_narration'] = $narration;
         $this->state['last_ai_source'] = $source;
         $record['ai_source'] = $source;
         $this->state['history'][] = $record;
@@ -189,7 +185,6 @@ final class EGame
         $this->state['phase'] = 'OPEN';
         $this->state['deadline_at'] = time() + (int) $this->state['round_duration_seconds'];
         $this->state['last_results'] = [];
-        $this->state['last_narration'] = null;
     }
 
     public function hasPlayer(int $userId): bool

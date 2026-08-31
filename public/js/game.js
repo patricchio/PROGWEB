@@ -51,11 +51,10 @@
     if (speakButton && 'speechSynthesis' in window) {
         speakButton.addEventListener('click', () => {
             window.speechSynthesis.cancel();
-            const narration = document.querySelector('.verdict-card > h2')?.textContent || '';
-            const stories = [...document.querySelectorAll('[data-verdict-text] li')]
+            const stories = [...document.querySelectorAll('[data-verdict-text] li p')]
                 .map((item) => item.innerText)
                 .join('. ');
-            const speech = new SpeechSynthesisUtterance(`${narration}. ${stories}`);
+            const speech = new SpeechSynthesisUtterance(stories);
             speech.lang = 'it-IT';
             speech.rate = 0.95;
             window.speechSynthesis.speak(speech);

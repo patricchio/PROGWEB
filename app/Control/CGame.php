@@ -183,7 +183,7 @@ final class CGame
             $evaluation = $ai->evaluateSurvival($claimedGame);
             $judgment = $ai->generateStory($claimedGame, $evaluation);
             $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($judgment): void {
-                $lockedGame->applyResults($judgment['results'], $judgment['narration'], $judgment['source']);
+                $lockedGame->applyResults($judgment['results'], $judgment['source']);
             });
         } catch (Throwable $exception) {
             FSession::flash('error', $exception->getMessage());

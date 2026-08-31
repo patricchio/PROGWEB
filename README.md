@@ -50,10 +50,10 @@ Il provider effettivamente usato è quello indicato da `provider`. Se il servizi
 
 La valutazione avviene in due chiamate distinte:
 
-1. `evaluateSurvival()` confronta scenario e risposta e fissa `SAFE` oppure `LOSE_LIFE` con una motivazione breve;
-2. `generateStory()` riceve il verdetto già fissato e scrive soltanto il racconto, senza poter cambiare chi perde la vita.
+1. `evaluateSurvival()` confronta scenario e risposta e restituisce soltanto `SAFE` oppure `LOSE_LIFE`;
+2. `generateStory()` riceve il verdetto già fissato e scrive una narrazione individuale di 4-6 frasi per ogni giocatore, senza poter cambiare chi perde la vita.
 
-Gli scenari generati vengono limitati anche da PHP a **35 parole e massimo 3 frasi**. I racconti sono limitati a 2-3 frasi per giocatore. La follia non aumenta la lunghezza e non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
+Gli scenari generati vengono limitati anche da PHP a **35 parole e massimo 3 frasi**. I racconti individuali sono limitati a 6 frasi e 90 parole per giocatore. La follia non aumenta la lunghezza e non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
 
 | Follia | Temperatura scenario/racconto | Temperatura verdetto |
 |---|---:|---:|
