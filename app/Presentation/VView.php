@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+final class VView
+{
+    private Smarty $smarty;
+
+    public function __construct(string $projectRoot)
+    {
+        require_once $projectRoot . '/lib/smarty/Smarty.class.php';
+
+        $compileDirectory = $projectRoot . '/storage/smarty-compile';
+        if (!is_dir($compileDirectory)) {
+            mkdir($compileDirectory, 0775, true);
+        }
+
+        $this->smarty = new Smarty();
+        $this->smarty->setTemplateDir($projectRoot . '/templates');
+        $this->smarty->setCompileDir($compileDirectory);
+        $this->smarty->escape_html = true;
+    }
+
+    public function render(string $template, array $data = []): void
+    {
+        $this->smarty->assign($data);
+        $this->smarty->assign('current_user', FSession::user());
+        $this->smarty->assign('csrf_token', FSession::csrfToken());
+        $this->smarty->assign('flash', FSession::consumeFlash());
+        $this->smarty->assign('page_template', $template);
+        $this->smarty->display('layout.tpl');
+    }
+
+    public function json(array $data, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+    }
+}

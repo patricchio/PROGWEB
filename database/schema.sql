@@ -1,0 +1,33 @@
+CREATE DATABASE IF NOT EXISTS death_by_ai
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE death_by_ai;
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(24) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS games (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    code CHAR(6) NOT NULL UNIQUE,
+    host_user_id INT UNSIGNED NOT NULL,
+    status ENUM('LOBBY', 'ACTIVE', 'FINISHED') NOT NULL DEFAULT 'LOBBY',
+    max_players TINYINT UNSIGNED NOT NULL,
+    initial_lives TINYINT UNSIGNED NOT NULL,
+    madness_level TINYINT UNSIGNED NOT NULL,
+    scenario_type ENUM('RANDOM', 'PRESET', 'CUSTOM') NOT NULL,
+    scenario_value VARCHAR(500) NULL,
+    state_json LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    finished_at DATETIME NULL,
+    CONSTRAINT fk_games_host FOREIGN KEY (host_user_id)
+        REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_games_host (host_user_id),
+    INDEX idx_games_status (status)
+) ENGINE=InnoDB;
