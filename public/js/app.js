@@ -1,21 +1,5 @@
 document.documentElement.classList.add('js-ready');
 
-const scenarioType = document.querySelector('[data-scenario-type]');
-if (scenarioType) {
-    const presetField = document.querySelector('[data-preset-field]');
-    const customField = document.querySelector('[data-custom-field]');
-    const randomHelp = document.querySelector('[data-random-help]');
-    const updateScenarioFields = () => {
-        presetField.hidden = scenarioType.value !== 'PRESET';
-        customField.hidden = scenarioType.value !== 'CUSTOM';
-        randomHelp.hidden = scenarioType.value !== 'RANDOM';
-        presetField.querySelector('select').disabled = presetField.hidden;
-        customField.querySelector('textarea').disabled = customField.hidden;
-    };
-    scenarioType.addEventListener('change', updateScenarioFields);
-    updateScenarioFields();
-}
-
 const codeInput = document.querySelector('#game-code');
 if (codeInput) {
     codeInput.addEventListener('input', () => {

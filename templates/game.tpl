@@ -50,7 +50,7 @@
             {elseif $game->state.phase === 'OPEN'}
                 <article class="panel scenario-card">
                     <div class="preview-topline">
-                        <span>Scenario</span>
+                        <span>Incipit</span>
                         <span class="round-timer" data-round-timer aria-live="polite">--:--</span>
                         <span class="madness">Follia {$game->madnessLevel}/3</span>
                     </div>
@@ -67,7 +67,7 @@
                     {else}
                         <form class="panel answer-card" method="post" action="{$base_url}/game/{$game->code}/answer" data-answer-form>
                             <input type="hidden" name="csrf_token" value="{$csrf_token}">
-                            <label for="answer"><strong>Come sopravvivi?</strong></label>
+                            <label for="answer"><strong>Come continui la storia?</strong></label>
                             <textarea id="answer" name="answer" minlength="3" maxlength="700" rows="5" required></textarea>
                             <button class="button" type="submit">Conferma risposta</button>
                             <small>Allo scadere del timer, il testo presente verrà confermato automaticamente.</small>
@@ -95,7 +95,7 @@
                         <button class="speak-button" type="button" data-speak-verdict>🔊 Ascolta il racconto</button>
                     </div>
                     <div class="original-scenario">
-                        <span class="scenario-label">Scenario originale</span>
+                        <span class="scenario-label">Incipit originale</span>
                         <p>{$game->state.last_scenario|default:$game->state.scenario}</p>
                     </div>
                     <ul class="result-list" data-verdict-text>

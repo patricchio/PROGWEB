@@ -1,6 +1,6 @@
 # Death by AI — progetto di Programmazione Web
 
-Gioco narrativo web per **1-5 giocatori**. A ogni turno l’AI propone un pericolo, i giocatori spiegano come sopravvivere e il giudice decide se ciascuno è salvo oppure perde una vita.
+Gioco narrativo web per **1-5 giocatori**. A ogni turno l’AI propone un incipit di vita o di morte, i giocatori continuano la storia spiegando come reagiscono e il giudice decide se ciascuno è salvo oppure perde una vita.
 
 Il progetto è volutamente essenziale: PHP 8, MySQL/MariaDB, Smarty, CSS e JavaScript, con architettura Presentation-Control-Entity-Foundation e Front Controller unico.
 
@@ -38,28 +38,30 @@ La chiave è una chiave della **OpenAI API**, non la password né l’abbonament
 'ai' => [
     'provider' => 'ollama',
     'ollama_url' => 'http://127.0.0.1:11434',
-    'ollama_model' => 'llama3.2',
+    'ollama_model' => 'llama3',
 ],
 ```
 
-Per attivarlo basta commentare la configurazione OpenAI e decommentare il blocco Ollama già presente in `config/config.local.php`. Avviare Ollama e scaricare il modello con `ollama pull llama3.2`.
+Per attivarlo basta commentare la configurazione OpenAI e decommentare il blocco Ollama già presente in `config/config.local.php`. Avviare Ollama e scaricare il modello con `ollama pull llama3`.
 
 Il provider effettivamente usato è quello indicato da `provider`. Se il servizio AI non risponde durante una dimostrazione, entra automaticamente in funzione un giudice simulato con lo stesso formato JSON. In questo modo il flusso resta presentabile anche senza rete.
 
 ### Come viene usata l’AI
 
-La valutazione avviene in due chiamate distinte:
+La generazione dell’incipit usa due campi JSON (`setup` e `danger`), entrambi composti da una frase completa. PHP li unisce e aggiunge `Cosa fai?`. Il testo non viene mai troncato: se struttura o lunghezza non sono valide, l’applicazione chiede a Llama 3 di rigenerarlo una volta e poi usa un incipit locale già validato.
 
-1. `evaluateSurvival()` confronta scenario e risposta e restituisce soltanto `SAFE` oppure `LOSE_LIFE`;
+Dopo la risposta dei giocatori, la valutazione avviene in due chiamate distinte:
+
+1. `evaluateSurvival()` confronta incipit e continuazione e restituisce soltanto `SAFE` oppure `LOSE_LIFE`;
 2. `generateStory()` riceve il verdetto già fissato e scrive una narrazione individuale di 4-6 frasi per ogni giocatore, senza poter cambiare chi perde la vita.
 
-Gli scenari generati vengono limitati anche da PHP a **35 parole e massimo 3 frasi**. I racconti individuali sono limitati a 6 frasi e 90 parole per giocatore. La follia non aumenta la lunghezza e non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
+Gli incipit hanno sempre tre frasi complete e circa **32-58 parole**. I racconti individuali richiesti all’AI sono di 4-6 frasi e circa 60-90 parole. La follia non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
 
 | Follia | Temperatura scenario/racconto | Temperatura verdetto |
 |---|---:|---:|
-| 1 | 0.35 | 0.15 |
-| 2 | 0.70 | 0.35 |
-| 3 | 1.05 | 0.60 |
+| 1 | 0.35 | 0.05 |
+| 2 | 0.60 | 0.10 |
+| 3 | 0.80 | 0.20 |
 
 Il verdetto usa temperature più basse perché deve restare coerente; il racconto può essere più creativo. I limiti di token dipendono soltanto dal numero di giocatori, non dalla follia.
 
@@ -96,15 +98,15 @@ Sono **9 classi applicative**. I template Smarty si trovano in `templates/`, CSS
 - registrazione, login e logout;
 - password hash, sessioni, CSRF, prepared statement ed escaping Smarty;
 - creazione partita con 1-5 giocatori, 1-3 vite e follia 1-3;
-- tema casuale, tema predefinito o tema personalizzato, con un nuovo pericolo generato a ogni turno;
-- scenari sempre pericolosi, brevi e coerenti con il tema scelto;
+- nuovo incipit casuale di vita o di morte generato autonomamente dall’AI a ogni turno;
+- incipit completi di lunghezza uniforme, rigenerati invece di essere troncati;
 - codice invito e lobby soltanto nelle partite multiplayer;
 - single player senza codice invito visibile;
 - timer scelto dall’host tra 10 e 60 secondi e conferma automatica del testo alla scadenza;
 - risposta definitiva dopo la conferma, valutazione immediata in single player e polling asincrono con Fetch;
-- giudizio AI `SAFE`/`LOSE_LIFE` basato su scenario e risposta, senza perdite obbligatorie;
+- giudizio AI `SAFE`/`LOSE_LIFE` basato su incipit e continuazione, senza perdite obbligatorie;
 - verdetto e racconto generati in due passaggi separati;
-- scenari AI brevi, fino a 35 parole e 3 frasi, indipendentemente dalla follia;
+- incipit AI di tre frasi e circa 32-58 parole, indipendentemente dalla follia;
 - racconto personalizzato per ogni risposta e lettura text-to-speech del browser;
 - eliminazione delle partite non concluse, riservata all’host e con conferma;
 - spettatore a zero vite, turni successivi, vincitore o pareggio;

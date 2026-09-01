@@ -24,8 +24,8 @@
         <div class="danger-orbit" aria-hidden="true">
             <span class="danger-core">!</span>
         </div>
-        <p class="scenario-label">Scenario</p>
-        <h2>La gravità è sparita e il soffitto sta per diventare il tuo peggior nemico.</h2>
+        <p class="scenario-label">Incipit</p>
+        <h2>La gravità scompare mentre la stazione perde ossigeno e il portello di emergenza si blocca. I detriti ruotano verso una falla che si allarga rapidamente, trascinando ogni oggetto fuori dalla cabina. Cosa fai?</h2>
         <div class="answer-preview">
             <span>La tua risposta</span>
             <p>«Uso le tende come funi e raggiungo la camera di sicurezza.»</p>
@@ -46,12 +46,12 @@
         <li>
             <span class="step-number">01</span>
             <h3>Crea la partita</h3>
-            <p>Scegli vite, tema e livello di follia. In single player puoi partire immediatamente.</p>
+            <p>Scegli vite, durata del turno e livello di follia. In single player puoi partire immediatamente.</p>
         </li>
         <li>
             <span class="step-number">02</span>
-            <h3>Rispondi allo scenario</h3>
-            <p>Hai una sola missione: convincere l'AI che la tua soluzione può davvero salvarti.</p>
+            <h3>Continua l’incipit</h3>
+            <p>Continua l’incipit spiegando che cosa fai e convinci l’AI che la tua scelta può salvarti.</p>
         </li>
         <li>
             <span class="step-number">03</span>
@@ -60,4 +60,3 @@
         </li>
     </ol>
 </section>
-

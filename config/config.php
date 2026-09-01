@@ -21,7 +21,7 @@ $config = [
 
         // Configurazione alternativa locale (non attiva finché provider è openai).
         'ollama_url' => 'http://127.0.0.1:11434',
-        'ollama_model' => 'llama3.2',
+        'ollama_model' => 'llama3',
     ],
 ];
 

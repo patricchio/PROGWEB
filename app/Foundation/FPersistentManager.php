@@ -51,8 +51,9 @@ final class FPersistentManager
             'max_players' => $game->maxPlayers,
             'lives' => $game->initialLives,
             'madness' => $game->madnessLevel,
-            'scenario_type' => $game->scenarioType,
-            'scenario_value' => $game->scenarioValue,
+            // Colonne mantenute soltanto per compatibilità con il database esistente.
+            'scenario_type' => 'RANDOM',
+            'scenario_value' => null,
             'state_json' => json_encode($game->state, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
         ]);
         $game->id = (int) $this->database->lastInsertId();

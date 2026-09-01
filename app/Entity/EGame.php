@@ -12,17 +12,15 @@ final class EGame
         public int $maxPlayers,
         public int $initialLives,
         public int $madnessLevel,
-        public string $scenarioType,
-        public ?string $scenarioValue,
         public array $state
     ) {
     }
 
     public static function create(string $code, array $host, int $maxPlayers, int $lives,
-        int $madness, string $scenarioType, ?string $scenarioValue, int $roundDuration = 30): self
+        int $madness, int $roundDuration = 30): self
     {
         return new self(0, $code, (int) $host['id'], 'LOBBY', $maxPlayers, $lives, $madness,
-            $scenarioType, $scenarioValue, [
+            [
                 'phase' => 'LOBBY',
                 'round' => 0,
                 'round_duration_seconds' => $roundDuration,
@@ -49,8 +47,7 @@ final class EGame
         ];
         return new self((int) $row['id'], (string) $row['code'], (int) $row['host_user_id'],
             (string) $row['status'], (int) $row['max_players'], (int) $row['initial_lives'],
-            (int) $row['madness_level'], (string) $row['scenario_type'],
-            $row['scenario_value'] === null ? null : (string) $row['scenario_value'], $state);
+            (int) $row['madness_level'], $state);
     }
 
     public function addPlayer(array $user): void

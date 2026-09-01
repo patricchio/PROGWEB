@@ -35,27 +35,11 @@ final class CGame
         $lives = (int) ($_POST['lives'] ?? 2);
         $madness = (int) ($_POST['madness'] ?? 2);
         $roundDuration = (int) ($_POST['round_duration'] ?? 30);
-        $scenarioType = strtoupper((string) ($_POST['scenario_type'] ?? 'RANDOM'));
-        $scenarioValue = $scenarioType === 'PRESET'
-            ? trim((string) ($_POST['preset_value'] ?? ''))
-            : trim((string) ($_POST['custom_value'] ?? ''));
-        $scenarioValue = $scenarioValue !== '' ? $scenarioValue : null;
 
         if ($maxPlayers < 1 || $maxPlayers > 5 || $lives < 1 || $lives > 3
-            || $madness < 1 || $madness > 3 || $roundDuration < 10 || $roundDuration > 60
-            || !in_array($scenarioType, ['RANDOM', 'PRESET', 'CUSTOM'], true)) {
+            || $madness < 1 || $madness > 3 || $roundDuration < 10 || $roundDuration > 60) {
             FSession::flash('error', 'Configurazione della partita non valida.');
             $this->redirect('/');
-        }
-        if ($scenarioType === 'CUSTOM' && (mb_strlen((string) $scenarioValue) < 3 || mb_strlen((string) $scenarioValue) > 120)) {
-            FSession::flash('error', 'Il tema personalizzato deve contenere da 3 a 120 caratteri.');
-            $this->redirect('/');
-        }
-        if ($scenarioType === 'PRESET' && !in_array($scenarioValue, ['ZOMBIE', 'SPACE', 'FANTASY', 'DISASTER'], true)) {
-            $scenarioValue = 'ZOMBIE';
-        }
-        if ($scenarioType === 'RANDOM') {
-            $scenarioValue = null;
         }
 
         try {
@@ -63,8 +47,14 @@ final class CGame
             do {
                 $code = $this->generateGameCode();
             } while ($manager->gameCodeExists($code));
-            $manager->createGame(EGame::create($code, $user, $maxPlayers, $lives,
-                $madness, $scenarioType, $scenarioValue, $roundDuration));
+            $manager->createGame(EGame::create(
+                $code,
+                $user,
+                $maxPlayers,
+                $lives,
+                $madness,
+                $roundDuration
+            ));
             $this->redirect('/game/' . $code);
         } catch (Throwable $exception) {
             FSession::flash('error', 'Impossibile creare la partita: ' . $exception->getMessage());

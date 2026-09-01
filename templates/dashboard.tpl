@@ -45,25 +45,7 @@
                 <label><input type="radio" name="madness" value="3"> 3 · Caos totale</label>
             </fieldset>
 
-            <label>Scelta del tema
-                <select name="scenario_type" data-scenario-type>
-                    <option value="PRESET">Scegli un tema predefinito</option>
-                    <option value="CUSTOM">Scrivi un tema personalizzato</option>
-                    <option value="RANDOM">Lascia scegliere il tema all’AI</option>
-                </select>
-            </label>
-            <p class="field-help" data-random-help hidden>L’AI sceglierà un tema nuovo e creerà una situazione di pericolo.</p>
-            <label data-preset-field>Tema predefinito
-                <select name="preset_value">
-                    <option value="ZOMBIE">Apocalisse zombie</option>
-                    <option value="SPACE">Spazio profondo</option>
-                    <option value="FANTASY">Fantasy magico</option>
-                    <option value="DISASTER">Catastrofe assurda</option>
-                </select>
-            </label>
-            <label data-custom-field hidden>Tema personalizzato
-                <textarea name="custom_value" minlength="3" maxlength="120" rows="2" placeholder="Es. parco divertimenti, scuola di magia, nave pirata..."></textarea>
-            </label>
+            <p class="field-help">A ogni turno l’AI inventerà autonomamente un nuovo incipit di vita o di morte.</p>
 
             <button class="button button-full" type="submit">Crea partita</button>
         </form>

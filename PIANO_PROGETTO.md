@@ -27,20 +27,11 @@ Il progetto deve dimostrare gli argomenti del corso senza trasformarsi in un'app
   - 1 - realistico;
   - 2 - assurdo;
   - 3 - caos totale.
-- L'host sceglie il tema degli scenari:
-  - tema predefinito;
-  - tema personalizzato scritto dall'host;
-  - tema completamente casuale scelto dall'AI.
-- I temi predefiniti iniziali saranno pochi e salvati nel codice, ad esempio:
-  - apocalisse zombie;
-  - stazione spaziale;
-  - isola deserta;
-  - castello infestato;
-  - situazione quotidiana assurda.
+- L'AI sceglie autonomamente luogo, epoca e tipo di minaccia di ogni incipit.
 - In modalità single player la partita può iniziare immediatamente e non viene mostrato alcun codice invito.
 - In multiplayer gli amici entrano con un codice e l'host avvia la partita.
-- Il tema non è lo scenario: a ogni turno l'AI genera una nuova situazione di pericolo coerente con il tema e diversa dalle precedenti.
-- Ogni scenario deve contenere una minaccia immediata e potenzialmente mortale; una semplice situazione strana o tranquilla non è valida.
+- A ogni turno l'AI genera un incipit diverso dai precedenti che il giocatore deve continuare.
+- Ogni incipit contiene una minaccia immediata e potenzialmente mortale e termina con `Cosa fai?`.
 - Ogni giocatore con almeno una vita invia una risposta per il turno.
 - L'host sceglie una durata tra 10 e 60 secondi. Alla scadenza le risposte vengono bloccate e inviate automaticamente al giudice AI; se tutti hanno risposto, l'host può anticipare il verdetto.
 - Per ogni giocatore l'AI restituisce uno dei due esiti:
@@ -65,8 +56,7 @@ Il progetto deve dimostrare gli argomenti del corso senza trasformarsi in un'app
 4. Creazione partita con:
    - numero massimo di giocatori da 1 a 5;
    - vite iniziali da 1 a 3;
-   - livello di follia da 1 a 3;
-   - tema predefinito, personalizzato o casuale.
+   - livello di follia da 1 a 3.
 5. Generazione del codice invito soltanto per il multiplayer.
 6. Ingresso degli amici tramite codice.
 7. Lobby minimale con nomi dei partecipanti.
@@ -125,7 +115,7 @@ L'host è anche un giocatore e può inoltre:
 
 ### Servizio AI
 
-- generare lo scenario in base al tema e al livello di follia;
+- generare autonomamente un incipit di vita o di morte;
 - valutare ogni risposta;
 - restituire un risultato JSON controllabile da PHP.
 
@@ -155,8 +145,8 @@ Per non produrre troppa documentazione, saranno descritti sei casi d'uso.
 **Scenario principale:**
 
 1. Il giocatore apre la pagina della partita.
-2. Il sistema mostra scenario, livello di follia e vite dei giocatori.
-3. Il giocatore inserisce la risposta.
+2. Il sistema mostra l'incipit, il livello di follia e le vite dei giocatori.
+3. Il giocatore continua la storia descrivendo la propria azione.
 4. JavaScript controlla che la risposta non sia vuota e non superi il limite.
 5. Il giocatore invia la risposta.
 6. PHP ripete la validazione e salva la risposta nello stato condiviso della partita.
@@ -400,8 +390,7 @@ Questa non è una violazione delle slide: è precisamente il significato dello s
 - `max_players` - da 1 a 5;
 - `initial_lives` - da 1 a 3;
 - `madness_level` - da 1 a 3;
-- `scenario_type` - `PRESET`, `CUSTOM` oppure `RANDOM`;
-- `scenario_value` - nome del preset o tema personalizzato;
+- `scenario_type` e `scenario_value` - colonne legacy ignorate dall'applicazione e mantenute soltanto per compatibilità con il database esistente;
 - `state_json` - stato completo della partita;
 - `created_at`;
 - `updated_at`;
@@ -491,15 +480,26 @@ Si usa una sola classe `FAIService`. Il provider viene scelto nel file locale di
 
 `FAIService` espone tre operazioni semplici:
 
-- `createScenario(EGame $game): string` genera uno scenario breve;
+- `createScenario(EGame $game): string` genera un incipit completo e di lunghezza uniforme;
 - `evaluateSurvival(EGame $game): array` decide soltanto `SAFE` o `LOSE_LIFE`;
 - `generateStory(EGame $game, array $evaluation): array` racconta il verdetto già deciso senza modificarlo.
 
 Il resto dell'applicazione non deve sapere quale provider è attivo.
 
-### Due risposte richieste all'AI
+### Tre risposte richieste all'AI
 
-La prima chiamata valuta scenario e risposta:
+La generazione dell'incipit separa le due frasi prodotte dal modello, così PHP può controllarne la struttura senza tagliare il testo:
+
+```json
+{
+  "setup": "Prima frase completa che introduce luogo e incidente.",
+  "danger": "Seconda frase completa con ostacoli, urgenza e rischio mortale."
+}
+```
+
+PHP accetta intervalli di parole definiti, unisce le due frasi e aggiunge `Cosa fai?`. Una risposta fuori formato viene rigenerata una volta; non vengono mai aggiunti puntini di sospensione.
+
+La seconda chiamata valuta incipit e continuazione:
 
 ```json
 {
@@ -509,7 +509,7 @@ La prima chiamata valuta scenario e risposta:
 }
 ```
 
-La seconda chiamata riceve questi verdetti come dati definitivi e genera soltanto il racconto:
+La terza chiamata riceve questi verdetti come dati definitivi e genera soltanto il racconto:
 
 Per ogni giocatore l'AI deve restituire JSON in questo formato:
 
@@ -530,9 +530,9 @@ PHP accetta la risposta solo se:
 - l'esito è `SAFE` oppure `LOSE_LIFE`;
 - ogni racconto individuale richiesto è presente.
 
-Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Il livello di follia modifica la temperatura del modello, non la lunghezza e non la probabilità prefissata di perdere. Gli scenari generati restano entro 35 parole e 2-3 frasi anche a follia 3.
+Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Il livello di follia modifica la temperatura del modello, non la lunghezza e non la probabilità prefissata di perdere. Gli incipit restano di tre frasi complete e circa 32-58 parole anche a follia 3.
 
-Se la risposta dell'AI non è valida, lo stato della partita non viene modificato e l'host può riprovare.
+Se una risposta dell'AI non è valida o il servizio non risponde, entra in funzione il fallback locale con lo stesso formato previsto.
 
 ## 13. Front Controller e URL - Step 7
 
@@ -586,7 +586,7 @@ JavaScript aggiorna il DOM senza ricaricare tutta la pagina. Le regole important
 - rigenerazione dell'ID di sessione dopo il login;
 - controllo che l'utente appartenga alla partita;
 - controllo che solo l'host possa avviare e che la valutazione multiplayer parta soltanto dopo il timer;
-- limite di lunghezza per tema personalizzato e risposte;
+- limite di lunghezza per le continuazioni dei giocatori;
 - chiave OpenAI esclusa da Git;
 - nessuna chiamata AI direttamente dal browser.
 
