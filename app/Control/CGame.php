@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 final class CGame
 {
+    private const AUTOMATIC_CONFIRMATION_GRACE_SECONDS = 2;
+
     public function __construct(private VView $view, private string $baseUrl) {}
 
     public function home(): void
@@ -109,8 +111,8 @@ final class CGame
                 'game' => $game,
                 'is_host' => $game->hostUserId === (int) $user['id'],
                 'current_player' => $currentPlayer,
-                'all_answered' => $game->allLivingPlayersAnswered(),
                 'server_time' => time(),
+                'automatic_confirmation_grace' => self::AUTOMATIC_CONFIRMATION_GRACE_SECONDS,
             ]);
         } catch (Throwable $exception) {
             FSession::flash('error', $exception->getMessage());
@@ -142,16 +144,34 @@ final class CGame
     {
         $user = FSession::requireUser($this->baseUrl);
         $this->guardCsrf();
+        $automatic = ($_POST['automatic'] ?? '') === '1';
         $answer = trim((string) ($_POST['answer'] ?? ''));
-        if (mb_strlen($answer) < 3 || mb_strlen($answer) > 700) {
+        $minimumLength = $automatic ? 1 : 3;
+        if (mb_strlen($answer) < $minimumLength || mb_strlen($answer) > 700) {
+            if ($automatic) {
+                $this->view->json(['error' => 'Non c’era alcuna risposta da confermare automaticamente.'], 422);
+                return;
+            }
             FSession::flash('error', 'La risposta deve contenere da 3 a 700 caratteri.');
             $this->redirect('/game/' . strtoupper($code));
         }
         try {
-            (new FPersistentManager())->mutateGame(strtoupper($code),
-                static fn (EGame $game) => $game->submitAnswer((int) $user['id'], $answer));
-            FSession::flash('success', 'Risposta salvata. Puoi modificarla finché il turno resta aperto.');
+            $manager = new FPersistentManager();
+            $game = $manager->mutateGame(strtoupper($code),
+                static fn (EGame $game) => $game->submitAnswer((int) $user['id'], $answer, $automatic));
+            if ($game->maxPlayers === 1) {
+                $this->runEvaluation($manager, $game->code, (int) $user['id'], true);
+            }
+            if ($automatic) {
+                $this->view->json(['confirmed' => true]);
+                return;
+            }
+            FSession::flash('success', 'Risposta confermata. Non può più essere modificata.');
         } catch (Throwable $exception) {
+            if ($automatic) {
+                $this->view->json(['error' => $exception->getMessage()], 409);
+                return;
+            }
             FSession::flash('error', $exception->getMessage());
         }
         $this->redirect('/game/' . strtoupper($code));
@@ -163,28 +183,7 @@ final class CGame
         $this->guardCsrf();
         try {
             $manager = new FPersistentManager();
-            $game = $manager->findGameByCode(strtoupper($code));
-            if ($game === null || !$game->hasPlayer((int) $user['id'])) {
-                throw new DomainException('Non partecipi a questa partita.');
-            }
-            $isHost = $game->hostUserId === (int) $user['id'];
-            if (!$game->isDeadlineExpired() && !($isHost && $game->allLivingPlayersAnswered())) {
-                throw new DomainException('Il timer non è ancora scaduto.');
-            }
-            $claimedGame = $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($user): void {
-                $isLockedHost = $lockedGame->hostUserId === (int) $user['id'];
-                if (!$lockedGame->hasPlayer((int) $user['id'])
-                    || (!$lockedGame->isDeadlineExpired() && !($isLockedHost && $lockedGame->allLivingPlayersAnswered()))) {
-                    throw new DomainException('Il turno non può ancora essere valutato.');
-                }
-                $lockedGame->prepareEvaluation();
-            });
-            $ai = new FAIService();
-            $evaluation = $ai->evaluateSurvival($claimedGame);
-            $judgment = $ai->generateStory($claimedGame, $evaluation);
-            $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($judgment): void {
-                $lockedGame->applyResults($judgment['results'], $judgment['source']);
-            });
+            $this->runEvaluation($manager, strtoupper($code), (int) $user['id']);
         } catch (Throwable $exception) {
             FSession::flash('error', $exception->getMessage());
         }
@@ -251,6 +250,37 @@ final class CGame
             throw new DomainException('Operazione riservata all’host.');
         }
         return $game;
+    }
+
+    private function runEvaluation(FPersistentManager $manager, string $code, int $userId,
+        bool $allowBeforeDeadline = false): void
+    {
+        $game = $manager->findGameByCode(strtoupper($code));
+        if ($game === null || !$game->hasPlayer($userId)) {
+            throw new DomainException('Non partecipi a questa partita.');
+        }
+        if (!$allowBeforeDeadline && !$this->automaticConfirmationWindowClosed($game)) {
+            throw new DomainException('Il timer non è ancora scaduto.');
+        }
+
+        $claimedGame = $manager->mutateGame($game->code, function (EGame $lockedGame) use ($userId, $allowBeforeDeadline): void {
+            if (!$lockedGame->hasPlayer($userId)
+                || (!$allowBeforeDeadline && !$this->automaticConfirmationWindowClosed($lockedGame))) {
+                throw new DomainException('Il turno non può ancora essere valutato.');
+            }
+            $lockedGame->prepareEvaluation();
+        });
+        $ai = new FAIService();
+        $evaluation = $ai->evaluateSurvival($claimedGame);
+        $judgment = $ai->generateStory($claimedGame, $evaluation);
+        $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($judgment): void {
+            $lockedGame->applyResults($judgment['results'], $judgment['source']);
+        });
+    }
+
+    private function automaticConfirmationWindowClosed(EGame $game): bool
+    {
+        return $game->isDeadlineExpired(time() - self::AUTOMATIC_CONFIRMATION_GRACE_SECONDS);
     }
 
     private function guardCsrf(): void

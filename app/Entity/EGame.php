@@ -84,17 +84,20 @@ final class EGame
         $this->state['deadline_at'] = time() + (int) $this->state['round_duration_seconds'];
     }
 
-    public function submitAnswer(int $userId, string $answer): void
+    public function submitAnswer(int $userId, string $answer, bool $automatic = false): void
     {
         if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'OPEN') {
             throw new DomainException('Il turno non accetta risposte.');
         }
-        if ($this->isDeadlineExpired()) {
-            throw new DomainException('Il tempo è scaduto: la risposta non può più essere modificata.');
-        }
         $index = $this->playerIndex($userId);
         if ($index === null || $this->state['players'][$index]['lives'] <= 0) {
             throw new DomainException('Non puoi rispondere in questa partita.');
+        }
+        if (trim((string) ($this->state['players'][$index]['answer'] ?? '')) !== '') {
+            throw new DomainException('La risposta è già stata confermata e non può essere modificata.');
+        }
+        if ($this->isDeadlineExpired() && !$automatic) {
+            throw new DomainException('Il tempo è scaduto: la risposta non può più essere confermata manualmente.');
         }
         $this->state['players'][$index]['answer'] = $answer;
     }
@@ -190,16 +193,6 @@ final class EGame
     public function hasPlayer(int $userId): bool
     {
         return $this->playerIndex($userId) !== null;
-    }
-
-    public function allLivingPlayersAnswered(): bool
-    {
-        foreach ($this->state['players'] as $player) {
-            if ($player['lives'] > 0 && trim((string) ($player['answer'] ?? '')) === '') {
-                return false;
-            }
-        }
-        return true;
     }
 
     public function isDeadlineExpired(?int $now = null): bool

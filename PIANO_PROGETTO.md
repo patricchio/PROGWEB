@@ -160,14 +160,16 @@ Per non produrre troppa documentazione, saranno descritti sei casi d'uso.
 4. JavaScript controlla che la risposta non sia vuota e non superi il limite.
 5. Il giocatore invia la risposta.
 6. PHP ripete la validazione e salva la risposta nello stato condiviso della partita.
-7. Il sistema conferma l'invio.
-8. La pagina continua a controllare lo stato del turno tramite richieste `fetch`.
+7. Il sistema conferma l'invio e rende la risposta definitiva.
+8. In single player parte immediatamente la valutazione; in multiplayer la pagina continua a controllare lo stato del turno tramite richieste `fetch`.
 
 **Alternative:**
 
 - risposta non valida: viene mostrato un messaggio vicino al campo;
 - sessione scaduta: viene richiesto nuovamente il login;
 - turno già chiuso: la risposta viene rifiutata;
+- timer scaduto prima dell'invio: il testo presente viene confermato automaticamente;
+- risposta già confermata: ogni tentativo di modifica viene rifiutato;
 - giocatore senza vite: la form non viene mostrata;
 - errore di rete: il testo rimane visibile e l'utente può riprovare.
 
@@ -583,7 +585,7 @@ JavaScript aggiorna il DOM senza ricaricare tutta la pagina. Le regole important
 - escaping dell'output nei template Smarty;
 - rigenerazione dell'ID di sessione dopo il login;
 - controllo che l'utente appartenga alla partita;
-- controllo che solo l'host possa avviare o valutare;
+- controllo che solo l'host possa avviare e che la valutazione multiplayer parta soltanto dopo il timer;
 - limite di lunghezza per tema personalizzato e risposte;
 - chiave OpenAI esclusa da Git;
 - nessuna chiamata AI direttamente dal browser.

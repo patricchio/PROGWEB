@@ -710,8 +710,17 @@ textarea:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; 
 .verdict-card h2,
 .finish-card h2 { margin: 24px 0 8px; font-size: clamp(1.8rem, 4vw, 3.5rem); line-height: 1.1; letter-spacing: -.035em; }
 .answer-card textarea { min-height: 150px; }
-.host-action { display: grid; justify-items: start; gap: 8px; }
-.host-action small { color: var(--muted); }
+.confirmed-answer p {
+    margin: 0;
+    padding: 16px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    background: #101014;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    line-height: 1.55;
+}
+.confirmed-answer small { color: var(--muted); }
 .result-list { margin: 28px 0; }
 .original-scenario {
     margin: 20px 0 24px;

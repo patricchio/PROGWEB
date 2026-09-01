@@ -1,4 +1,4 @@
-<section class="game-shell" data-game-code="{$game->code}" data-game-phase="{$game->state.phase}" data-game-round="{$game->state.round}" data-deadline-at="{$game->state.deadline_at|default:0}" data-server-time="{$server_time}">
+<section class="game-shell" data-game-code="{$game->code}" data-game-phase="{$game->state.phase}" data-game-round="{$game->state.round}" data-deadline-at="{$game->state.deadline_at|default:0}" data-server-time="{$server_time}" data-single-player="{if $game->maxPlayers === 1}1{else}0{/if}" data-confirmation-grace="{$automatic_confirmation_grace}">
     <header class="game-heading">
         <div>
             <span class="eyebrow">{if $game->maxPlayers === 1}Modalità single player{else}Partita {$game->code}{/if}</span>
@@ -58,25 +58,26 @@
                 </article>
 
                 {if $current_player.lives > 0}
-                    <form class="panel answer-card" method="post" action="{$base_url}/game/{$game->code}/answer">
-                        <input type="hidden" name="csrf_token" value="{$csrf_token}">
-                        <label for="answer"><strong>Come sopravvivi?</strong></label>
-                        <textarea id="answer" name="answer" minlength="3" maxlength="700" rows="5" required>{$current_player.answer|default:''}</textarea>
-                        <button class="button" type="submit">{if $current_player.answer}Aggiorna risposta{else}Invia risposta{/if}</button>
-                    </form>
+                    {if $current_player.answer}
+                        <div class="panel answer-card confirmed-answer">
+                            <strong>Risposta confermata</strong>
+                            <p>{$current_player.answer}</p>
+                            <small>La risposta è definitiva e non può più essere modificata.</small>
+                        </div>
+                    {else}
+                        <form class="panel answer-card" method="post" action="{$base_url}/game/{$game->code}/answer" data-answer-form>
+                            <input type="hidden" name="csrf_token" value="{$csrf_token}">
+                            <label for="answer"><strong>Come sopravvivi?</strong></label>
+                            <textarea id="answer" name="answer" minlength="3" maxlength="700" rows="5" required></textarea>
+                            <button class="button" type="submit">Conferma risposta</button>
+                            <small>Allo scadere del timer, il testo presente verrà confermato automaticamente.</small>
+                        </form>
+                    {/if}
                 {else}
                     <div class="panel spectator-card"><strong>Sei senza vite.</strong><p>Puoi continuare a seguire la partita come spettatore.</p></div>
                 {/if}
 
-                {if $is_host}
-                    <form class="host-action" method="post" action="{$base_url}/game/{$game->code}/evaluate">
-                        <input type="hidden" name="csrf_token" value="{$csrf_token}">
-                        <button class="button button-secondary" type="submit" {if !$all_answered}disabled{/if}>Valuta ora</button>
-                        {if !$all_answered}<small>Il verdetto partirà automaticamente allo scadere del timer.</small>{else}<small>Tutti hanno risposto: puoi chiudere il turno in anticipo.</small>{/if}
-                    </form>
-                {else}
-                    <div class="waiting"><span></span> Le risposte partiranno automaticamente allo scadere.</div>
-                {/if}
+                <div class="waiting"><span></span> {if $game->maxPlayers === 1}La risposta verrà valutata appena la confermi.{else}Il verdetto partirà automaticamente allo scadere del timer.{/if}</div>
                 <form method="post" action="{$base_url}/game/{$game->code}/evaluate" data-auto-evaluate hidden>
                     <input type="hidden" name="csrf_token" value="{$csrf_token}">
                 </form>

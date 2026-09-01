@@ -100,8 +100,8 @@ Sono **9 classi applicative**. I template Smarty si trovano in `templates/`, CSS
 - scenari sempre pericolosi, brevi e coerenti con il tema scelto;
 - codice invito e lobby soltanto nelle partite multiplayer;
 - single player senza codice invito visibile;
-- timer scelto dall’host tra 10 e 60 secondi e invio automatico alla scadenza;
-- scenario, risposta modificabile e polling asincrono con Fetch;
+- timer scelto dall’host tra 10 e 60 secondi e conferma automatica del testo alla scadenza;
+- risposta definitiva dopo la conferma, valutazione immediata in single player e polling asincrono con Fetch;
 - giudizio AI `SAFE`/`LOSE_LIFE` basato su scenario e risposta, senza perdite obbligatorie;
 - verdetto e racconto generati in due passaggi separati;
 - scenari AI brevi, fino a 35 parole e 3 frasi, indipendentemente dalla follia;
