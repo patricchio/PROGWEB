@@ -48,14 +48,14 @@ Il provider effettivamente usato è quello indicato da `provider`. Se il servizi
 
 ### Come viene usata l’AI
 
-La generazione dell’incipit usa due campi JSON (`setup` e `danger`), entrambi composti da una frase completa. PHP li unisce e aggiunge `Cosa fai?`. Il testo non viene mai troncato: se struttura o lunghezza non sono valide, l’applicazione chiede a Llama 3 di rigenerarlo una volta e poi usa un incipit locale già validato.
+La generazione dell’incipit è volutamente flessibile per permettere di sperimentare con il prompt. PHP accetta testo semplice, una stringa JSON, `{"scenario":"..."}` e anche il precedente formato `setup`/`danger`; normalizza soltanto gli spazi e aggiunge `Cosa fai?` se manca. Non impone lunghezza o numero di frasi e non tronca il testo. Il fallback viene usato soltanto se il servizio non risponde o il risultato è vuoto dopo tre tentativi.
 
 Dopo la risposta dei giocatori, la valutazione avviene in due chiamate distinte:
 
 1. `evaluateSurvival()` confronta incipit e continuazione e restituisce soltanto `SAFE` oppure `LOSE_LIFE`;
 2. `generateStory()` riceve il verdetto già fissato e scrive una narrazione individuale di 4-6 frasi per ogni giocatore, senza poter cambiare chi perde la vita.
 
-Gli incipit hanno sempre tre frasi complete e circa **32-58 parole**. I racconti individuali richiesti all’AI sono di 4-6 frasi e circa 60-90 parole. La follia non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
+Forma e lunghezza degli incipit dipendono esclusivamente dal prompt corrente. I racconti individuali richiesti all’AI sono di 4-6 frasi e circa 60-90 parole. La follia non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
 
 | Follia | Temperatura scenario/racconto | Temperatura verdetto |
 |---|---:|---:|
@@ -106,7 +106,7 @@ Sono **9 classi applicative**. I template Smarty si trovano in `templates/`, CSS
 - risposta definitiva dopo la conferma, valutazione immediata in single player e polling asincrono con Fetch;
 - giudizio AI `SAFE`/`LOSE_LIFE` basato su incipit e continuazione, senza perdite obbligatorie;
 - verdetto e racconto generati in due passaggi separati;
-- incipit AI di tre frasi e circa 32-58 parole, indipendentemente dalla follia;
+- formato dell’incipit modificabile liberamente dal prompt, senza dover cambiare il validatore;
 - racconto personalizzato per ogni risposta e lettura text-to-speech del browser;
 - eliminazione delle partite non concluse, riservata all’host e con conferma;
 - spettatore a zero vite, turni successivi, vincitore o pareggio;

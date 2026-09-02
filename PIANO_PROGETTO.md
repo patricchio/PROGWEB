@@ -488,16 +488,15 @@ Il resto dell'applicazione non deve sapere quale provider è attivo.
 
 ### Tre risposte richieste all'AI
 
-La generazione dell'incipit separa le due frasi prodotte dal modello, così PHP può controllarne la struttura senza tagliare il testo:
+La generazione dell'incipit accetta più formati, così il prompt può essere modificato liberamente durante i test:
 
 ```json
 {
-  "setup": "Prima frase completa che introduce luogo e incidente.",
-  "danger": "Seconda frase completa con ostacoli, urgenza e rischio mortale."
+  "scenario": "Testo generato secondo il prompt corrente."
 }
 ```
 
-PHP accetta intervalli di parole definiti, unisce le due frasi e aggiunge `Cosa fai?`. Una risposta fuori formato viene rigenerata una volta; non vengono mai aggiunti puntini di sospensione.
+Sono supportati testo semplice, stringhe JSON, l'oggetto `scenario` e il precedente oggetto `setup`/`danger`. PHP verifica soltanto che il risultato non sia vuoto, normalizza gli spazi e aggiunge `Cosa fai?` quando manca. Non impone limiti di parole o frasi e non tronca il testo.
 
 La seconda chiamata valuta incipit e continuazione:
 
@@ -530,7 +529,7 @@ PHP accetta la risposta solo se:
 - l'esito è `SAFE` oppure `LOSE_LIFE`;
 - ogni racconto individuale richiesto è presente.
 
-Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Il livello di follia modifica la temperatura del modello, non la lunghezza e non la probabilità prefissata di perdere. Gli incipit restano di tre frasi complete e circa 32-58 parole anche a follia 3.
+Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Il livello di follia modifica la temperatura del modello, non la probabilità prefissata di perdere. Forma e lunghezza dell'incipit sono controllate dal prompt corrente.
 
 Se una risposta dell'AI non è valida o il servizio non risponde, entra in funzione il fallback locale con lo stesso formato previsto.
 
