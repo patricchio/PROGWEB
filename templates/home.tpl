@@ -19,7 +19,6 @@
     <div class="scenario-preview" aria-label="Esempio di turno">
         <div class="preview-topline">
             <span>Turno 04</span>
-            <span class="madness">Follia 3/3</span>
         </div>
         <div class="danger-orbit" aria-hidden="true">
             <span class="danger-core">!</span>
@@ -46,7 +45,7 @@
         <li>
             <span class="step-number">01</span>
             <h3>Crea la partita</h3>
-            <p>Scegli vite, durata del turno e livello di follia. In single player puoi partire immediatamente.</p>
+            <p>Scegli vite e durata del turno. In single player puoi partire immediatamente.</p>
         </li>
         <li>
             <span class="step-number">02</span>

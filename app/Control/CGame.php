@@ -33,11 +33,10 @@ final class CGame
         $this->guardCsrf();
         $maxPlayers = (int) ($_POST['max_players'] ?? 1);
         $lives = (int) ($_POST['lives'] ?? 2);
-        $madness = (int) ($_POST['madness'] ?? 2);
         $roundDuration = (int) ($_POST['round_duration'] ?? 30);
 
         if ($maxPlayers < 1 || $maxPlayers > 5 || $lives < 1 || $lives > 3
-            || $madness < 1 || $madness > 3 || $roundDuration < 10 || $roundDuration > 60) {
+            || $roundDuration < 10 || $roundDuration > 60) {
             FSession::flash('error', 'Configurazione della partita non valida.');
             $this->redirect('/');
         }
@@ -52,7 +51,6 @@ final class CGame
                 $user,
                 $maxPlayers,
                 $lives,
-                $madness,
                 $roundDuration
             ));
             $this->redirect('/game/' . $code);
@@ -264,7 +262,11 @@ final class CGame
         $evaluation = $ai->evaluateSurvival($claimedGame);
         $judgment = $ai->generateStory($claimedGame, $evaluation);
         $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($judgment): void {
-            $lockedGame->applyResults($judgment['results'], $judgment['source']);
+            $lockedGame->applyResults(
+                $judgment['results'],
+                (string) ($judgment['judgment_source'] ?? 'fallback'),
+                (string) ($judgment['story_source'] ?? 'fallback')
+            );
         });
     }
 

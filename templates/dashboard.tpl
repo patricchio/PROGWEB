@@ -38,13 +38,6 @@
                 </label>
             </div>
 
-            <fieldset class="choice-group">
-                <legend>Livello di follia dell’AI</legend>
-                <label><input type="radio" name="madness" value="1"> 1 · Quasi razionale</label>
-                <label><input type="radio" name="madness" value="2" checked> 2 · Imprevedibile</label>
-                <label><input type="radio" name="madness" value="3"> 3 · Caos totale</label>
-            </fieldset>
-
             <p class="field-help">A ogni turno l’AI inventerà autonomamente un nuovo incipit di vita o di morte.</p>
 
             <button class="button button-full" type="submit">Crea partita</button>

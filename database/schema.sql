@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS games (
     status ENUM('LOBBY', 'ACTIVE', 'FINISHED') NOT NULL DEFAULT 'LOBBY',
     max_players TINYINT UNSIGNED NOT NULL,
     initial_lives TINYINT UNSIGNED NOT NULL,
-    madness_level TINYINT UNSIGNED NOT NULL,
     -- Campi legacy mantenuti per compatibilità con partite create prima della rimozione dei temi.
     scenario_type ENUM('RANDOM', 'PRESET', 'CUSTOM') NOT NULL DEFAULT 'RANDOM',
     scenario_value VARCHAR(500) NULL,

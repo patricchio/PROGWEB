@@ -48,22 +48,22 @@ Il provider effettivamente usato è quello indicato da `provider`. Se il servizi
 
 ### Come viene usata l’AI
 
-La generazione dell’incipit è volutamente flessibile per permettere di sperimentare con il prompt. PHP accetta testo semplice, una stringa JSON, `{"scenario":"..."}` e anche il precedente formato `setup`/`danger`; normalizza soltanto gli spazi e aggiunge `Cosa fai?` se manca. Non impone lunghezza o numero di frasi e non tronca il testo. Il fallback viene usato soltanto se il servizio non risponde o il risultato è vuoto dopo tre tentativi.
+La generazione dell’incipit è volutamente flessibile per permettere di sperimentare con il prompt. PHP accetta testo semplice, una stringa JSON, `{"scenario":"..."}` e anche il precedente formato `setup`/`danger`; normalizza soltanto gli spazi e aggiunge `Cosa fai?` se manca. Non tronca il testo. Per evitare che Llama ripeta sempre le anomalie del corpo, il servizio alterna internamente cinque macro-categorie non visibili al giocatore, mentre contenuto e formulazione restano generati dall’AI. Il fallback viene usato soltanto se il servizio non risponde oppure restituisce un risultato vuoto o chiaramente incompleto dopo tre tentativi.
 
-Dopo la risposta dei giocatori, la valutazione avviene in due chiamate distinte:
+Dopo la risposta dei giocatori, la valutazione avviene in due fasi distinte:
 
 1. `evaluateSurvival()` confronta incipit e continuazione e restituisce soltanto `SAFE` oppure `LOSE_LIFE`;
-2. `generateStory()` riceve il verdetto già fissato e scrive una narrazione individuale di 4-6 frasi per ogni giocatore, senza poter cambiare chi perde la vita.
+2. `generateStory()` riceve il verdetto già fissato e richiede separatamente una narrazione di 5 frasi per ciascun giocatore, senza poter cambiare chi perde la vita. Accetta le varianti JSON comuni di Ollama e riprova soltanto se il testo è davvero vuoto, non valido o troncato.
 
-Forma e lunghezza degli incipit dipendono esclusivamente dal prompt corrente. I racconti individuali richiesti all’AI sono di 4-6 frasi e circa 60-90 parole. La follia non impone una percentuale di sconfitte: modifica soltanto la temperatura usata dal provider.
+Nella schermata del risultato vengono mostrate soltanto le narrazioni individuali, senza ripetere prima incipit e risposta. Le sorgenti di giudizio e narrazione sono indicate separatamente, così un eventuale fallback è immediatamente identificabile.
 
-| Follia | Temperatura scenario/racconto | Temperatura verdetto |
-|---|---:|---:|
-| 1 | 0.35 | 0.05 |
-| 2 | 0.60 | 0.10 |
-| 3 | 0.80 | 0.20 |
+Forma e lunghezza degli incipit dipendono dal prompt corrente. I racconti individuali richiesti all’AI sono di 5 frasi e circa 60-90 parole. Le temperature sono costanti interne a `FAIService` e non sono modificabili dal giocatore:
 
-Il verdetto usa temperature più basse perché deve restare coerente; il racconto può essere più creativo. I limiti di token dipendono soltanto dal numero di giocatori, non dalla follia.
+- scenario: `0.50`, per ottenere carte brevi e semplici senza perdere varietà;
+- verdetto: `0.05`, per privilegiare stabilità e severità;
+- racconto: `0.45`, per mantenere la prosa naturale senza contraddire il risultato già deciso.
+
+Il servizio assegna agli scenari un budget sufficiente e scarta le risposte terminate per esaurimento dei token o con puntini di sospensione finali: un testo chiaramente incompleto non viene quindi mostrato al giocatore.
 
 ## Perché il database viene aggiornato durante la partita
 
@@ -97,7 +97,7 @@ Sono **9 classi applicative**. I template Smarty si trovano in `templates/`, CSS
 
 - registrazione, login e logout;
 - password hash, sessioni, CSRF, prepared statement ed escaping Smarty;
-- creazione partita con 1-5 giocatori, 1-3 vite e follia 1-3;
+- creazione partita con 1-5 giocatori, 1-3 vite e timer configurabile;
 - nuovo incipit casuale di vita o di morte generato autonomamente dall’AI a ogni turno;
 - incipit completi di lunghezza uniforme, rigenerati invece di essere troncati;
 - codice invito e lobby soltanto nelle partite multiplayer;

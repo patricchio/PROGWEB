@@ -23,11 +23,8 @@ Il progetto deve dimostrare gli argomenti del corso senza trasformarsi in un'app
 - Una partita può avere da **1 a 5 giocatori**.
 - L'utente che crea la partita è l'host.
 - L'host sceglie le vite iniziali, da **1 a 3**.
-- L'host sceglie il livello di follia dell'AI:
-  - 1 - realistico;
-  - 2 - assurdo;
-  - 3 - caos totale.
-- L'AI sceglie autonomamente luogo, epoca e tipo di minaccia di ogni incipit.
+- Le temperature dell'AI sono predefinite nel servizio e non sono configurabili dai giocatori.
+- Il servizio alterna cinque macro-categorie interne e l'AI inventa autonomamente contenuto e formulazione di ogni incipit.
 - In modalità single player la partita può iniziare immediatamente e non viene mostrato alcun codice invito.
 - In multiplayer gli amici entrano con un codice e l'host avvia la partita.
 - A ogni turno l'AI genera un incipit diverso dai precedenti che il giocatore deve continuare.
@@ -56,7 +53,7 @@ Il progetto deve dimostrare gli argomenti del corso senza trasformarsi in un'app
 4. Creazione partita con:
    - numero massimo di giocatori da 1 a 5;
    - vite iniziali da 1 a 3;
-   - livello di follia da 1 a 3.
+   - durata del turno da 10 a 60 secondi.
 5. Generazione del codice invito soltanto per il multiplayer.
 6. Ingresso degli amici tramite codice.
 7. Lobby minimale con nomi dei partecipanti.
@@ -145,7 +142,7 @@ Per non produrre troppa documentazione, saranno descritti sei casi d'uso.
 **Scenario principale:**
 
 1. Il giocatore apre la pagina della partita.
-2. Il sistema mostra l'incipit, il livello di follia e le vite dei giocatori.
+2. Il sistema mostra l'incipit, il timer e le vite dei giocatori.
 3. Il giocatore continua la storia descrivendo la propria azione.
 4. JavaScript controlla che la risposta non sia vuota e non superi il limite.
 5. Il giocatore invia la risposta.
@@ -179,7 +176,7 @@ Sono sufficienti sei schermate principali:
 
 1. **Login e registrazione**
 2. **Home utente** - crea partita oppure inserisci codice
-3. **Configurazione partita** - giocatori, vite, scenario e follia
+3. **Configurazione partita** - giocatori, vite e durata del turno
 4. **Lobby** - codice e partecipanti
 5. **Partita** - scenario, vite, risposta e stato del turno
 6. **Risultato** - esito del turno oppure fine partita
@@ -389,7 +386,6 @@ Questa non è una violazione delle slide: è precisamente il significato dello s
 - `status` - `LOBBY`, `ACTIVE` oppure `FINISHED`;
 - `max_players` - da 1 a 5;
 - `initial_lives` - da 1 a 3;
-- `madness_level` - da 1 a 3;
 - `scenario_type` e `scenario_value` - colonne legacy ignorate dall'applicazione e mantenute soltanto per compatibilità con il database esistente;
 - `state_json` - stato completo della partita;
 - `created_at`;
@@ -515,8 +511,8 @@ Per ogni giocatore l'AI deve restituire JSON in questo formato:
 ```json
 {
   "results": [
-    {"player_id": 7, "story": "Narrazione individuale di 4-6 frasi su come Anna sopravvive."},
-    {"player_id": 12, "story": "Narrazione individuale di 4-6 frasi su come Luca perde una vita."}
+    {"player_id": 7, "story": "Narrazione individuale di 5 frasi su come Anna sopravvive."},
+    {"player_id": 12, "story": "Narrazione individuale di 5 frasi su come Luca perde una vita."}
   ]
 }
 ```
@@ -529,7 +525,7 @@ PHP accetta la risposta solo se:
 - l'esito è `SAFE` oppure `LOSE_LIFE`;
 - ogni racconto individuale richiesto è presente.
 
-Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Il livello di follia modifica la temperatura del modello, non la probabilità prefissata di perdere. Forma e lunghezza dell'incipit sono controllate dal prompt corrente.
+Sono validi anche risultati in cui tutti sono `SAFE` oppure tutti sono `LOSE_LIFE`. Le temperature del modello sono costanti interne a `FAIService` e non impostazioni di gioco. Forma e lunghezza dell'incipit sono controllate dal prompt corrente.
 
 Se una risposta dell'AI non è valida o il servizio non risponde, entra in funzione il fallback locale con lo stesso formato previsto.
 
@@ -662,7 +658,7 @@ Una demo breve:
 1. mostrare le cartelle PCEF;
 2. mostrare le due tabelle MySQL;
 3. effettuare il login;
-4. creare una partita con vite, scenario e follia;
+4. creare una partita con vite e durata del turno;
 5. entrare con un secondo browser oppure avviare in single player;
 6. inviare le risposte;
 7. mostrare la chiamata AI e il JSON ricevuto;
@@ -675,8 +671,8 @@ Una demo breve:
 
 - [ ] Da 1 a 5 giocatori.
 - [ ] Da 1 a 3 vite scelte dall'host.
-- [ ] Scenari predefiniti, personalizzati o casuali.
-- [ ] Livello di follia da 1 a 3.
+- [ ] Nuovi scenari generati autonomamente dall'AI a ogni turno.
+- [ ] Temperature AI predefinite e non modificabili dai giocatori.
 - [ ] Nessun obbligo di perdere una vita a ogni turno.
 - [ ] Single player funzionante.
 - [ ] Invito multiplayer tramite codice.

@@ -264,13 +264,6 @@ p {
     text-transform: uppercase;
 }
 
-.madness {
-    padding: 7px 10px;
-    color: var(--danger);
-    background: rgba(255, 94, 91, 0.1);
-    border-radius: 999px;
-}
-
 .danger-orbit {
     width: 118px;
     height: 118px;
@@ -722,14 +715,6 @@ textarea:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; 
 }
 .confirmed-answer small { color: var(--muted); }
 .result-list { margin: 28px 0; }
-.original-scenario {
-    margin: 20px 0 24px;
-    padding: 18px 20px;
-    border: 1px solid rgba(141,104,255,.36);
-    border-radius: 15px;
-    background: rgba(141,104,255,.08);
-}
-.original-scenario p { margin: 8px 0 0; color: var(--text); line-height: 1.55; }
 .final-summary { margin: 18px 0; padding: 16px 18px; border-radius: 14px; background: rgba(58,210,159,.1); color: var(--text); }
 .result-list li { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: #101014; }
 .result-list li > div { display: flex; justify-content: space-between; gap: 16px; }
@@ -752,16 +737,6 @@ textarea:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; 
     font-weight: 900;
 }
 .timer-danger { color: white; background: rgba(255,94,91,.2); border-color: var(--danger); }
-.result-list blockquote {
-    margin: 14px 0 8px;
-    padding: 11px 14px;
-    color: var(--ink);
-    background: rgba(255,255,255,.04);
-    border-left: 3px solid var(--violet);
-    border-radius: 0 9px 9px 0;
-    font-size: .9rem;
-    line-height: 1.5;
-}
 .verdict-topline { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .speak-button {
     padding: 9px 13px;

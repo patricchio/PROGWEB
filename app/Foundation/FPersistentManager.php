@@ -41,8 +41,8 @@ final class FPersistentManager
     public function createGame(EGame $game): EGame
     {
         $statement = $this->database->prepare(
-            'INSERT INTO games (code, host_user_id, status, max_players, initial_lives, madness_level, scenario_type, scenario_value, state_json)
-             VALUES (:code, :host, :status, :max_players, :lives, :madness, :scenario_type, :scenario_value, :state_json)'
+            'INSERT INTO games (code, host_user_id, status, max_players, initial_lives, scenario_type, scenario_value, state_json)
+             VALUES (:code, :host, :status, :max_players, :lives, :scenario_type, :scenario_value, :state_json)'
         );
         $statement->execute([
             'code' => $game->code,
@@ -50,7 +50,6 @@ final class FPersistentManager
             'status' => $game->status,
             'max_players' => $game->maxPlayers,
             'lives' => $game->initialLives,
-            'madness' => $game->madnessLevel,
             // Colonne mantenute soltanto per compatibilità con il database esistente.
             'scenario_type' => 'RANDOM',
             'scenario_value' => null,

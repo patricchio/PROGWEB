@@ -11,15 +11,14 @@ final class EGame
         public string $status,
         public int $maxPlayers,
         public int $initialLives,
-        public int $madnessLevel,
         public array $state
     ) {
     }
 
     public static function create(string $code, array $host, int $maxPlayers, int $lives,
-        int $madness, int $roundDuration = 30): self
+        int $roundDuration = 30): self
     {
-        return new self(0, $code, (int) $host['id'], 'LOBBY', $maxPlayers, $lives, $madness,
+        return new self(0, $code, (int) $host['id'], 'LOBBY', $maxPlayers, $lives,
             [
                 'phase' => 'LOBBY',
                 'round' => 0,
@@ -44,10 +43,12 @@ final class EGame
             'round_duration_seconds' => 30,
             'deadline_at' => null,
             'last_ai_source' => 'fallback',
+            'last_judgment_source' => $state['last_ai_source'] ?? 'fallback',
+            'last_story_source' => $state['last_ai_source'] ?? 'fallback',
         ];
         return new self((int) $row['id'], (string) $row['code'], (int) $row['host_user_id'],
             (string) $row['status'], (int) $row['max_players'], (int) $row['initial_lives'],
-            (int) $row['madness_level'], $state);
+            $state);
     }
 
     public function addPlayer(array $user): void
@@ -113,7 +114,8 @@ final class EGame
         $this->state['phase'] = 'EVALUATING';
     }
 
-    public function applyResults(array $results, string $source = 'fallback'): void
+    public function applyResults(array $results, string $judgmentSource = 'fallback',
+        string $storySource = 'fallback'): void
     {
         if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'EVALUATING') {
             throw new DomainException('Il turno non può essere valutato.');
@@ -159,8 +161,13 @@ final class EGame
         ];
         $this->state['last_results'] = $roundResults;
         $this->state['last_scenario'] = (string) $this->state['scenario'];
-        $this->state['last_ai_source'] = $source;
-        $record['ai_source'] = $source;
+        $this->state['last_judgment_source'] = $judgmentSource;
+        $this->state['last_story_source'] = $storySource;
+        $this->state['last_ai_source'] = $judgmentSource === $storySource
+            ? $judgmentSource : 'mixed';
+        $record['judgment_source'] = $judgmentSource;
+        $record['story_source'] = $storySource;
+        $record['ai_source'] = $this->state['last_ai_source'];
         $this->state['history'][] = $record;
 
         $alive = array_values(array_filter($this->state['players'],

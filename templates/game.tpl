@@ -19,7 +19,6 @@
                 {/foreach}
             </ul>
             <dl class="game-rules">
-                <div><dt>Follia</dt><dd>{$game->madnessLevel}/3</dd></div>
                 <div><dt>Vite</dt><dd>{$game->initialLives}</dd></div>
                 <div><dt>Timer</dt><dd>{$game->state.round_duration_seconds}s</dd></div>
                 <div><dt>Modalità</dt><dd>{if $game->maxPlayers === 1}Solo{else}Gruppo{/if}</dd></div>
@@ -52,7 +51,6 @@
                     <div class="preview-topline">
                         <span>Incipit</span>
                         <span class="round-timer" data-round-timer aria-live="polite">--:--</span>
-                        <span class="madness">Follia {$game->madnessLevel}/3</span>
                     </div>
                     <h2>{$game->state.scenario}</h2>
                 </article>
@@ -94,21 +92,19 @@
                         <span class="eyebrow">Verdetto del turno {$game->state.round}</span>
                         <button class="speak-button" type="button" data-speak-verdict>🔊 Ascolta il racconto</button>
                     </div>
-                    <div class="original-scenario">
-                        <span class="scenario-label">Incipit originale</span>
-                        <p>{$game->state.last_scenario|default:$game->state.scenario}</p>
-                    </div>
                     <ul class="result-list" data-verdict-text>
                         {foreach $game->state.last_results as $result}
                             <li class="result-{if $result.outcome === 'SAFE'}safe{else}danger{/if}">
                                 <div><strong>{$result.username}</strong><span>{if $result.outcome === 'SAFE'}SOPRAVVIVE{else}MUORE · −1 VITA{/if}</span></div>
-                                <blockquote>“{$result.answer|default:'Nessuna risposta'}”</blockquote>
                                 <p>{$result.story}</p>
                                 <small>Vite rimaste: {$result.lives}</small>
                             </li>
                         {/foreach}
                     </ul>
-                    <p class="ai-source">Motore del verdetto: {if $game->state.last_ai_source === 'openai'}OpenAI{elseif $game->state.last_ai_source === 'ollama'}Ollama locale{else}Simulazione di sicurezza{/if}</p>
+                    <p class="ai-source">
+                        Giudice: {if $game->state.last_judgment_source === 'openai'}OpenAI{elseif $game->state.last_judgment_source === 'ollama'}Ollama locale{else}fallback{/if}
+                        · Narrazione: {if $game->state.last_story_source === 'openai'}OpenAI{elseif $game->state.last_story_source === 'ollama'}Ollama locale{else}fallback{/if}
+                    </p>
                     {if $game->status === 'FINISHED'}
                         <div class="final-summary">
                             {if $game->state.winner}
