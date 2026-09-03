@@ -103,22 +103,4 @@ if (game) {
         }
     }, 2500);
 
-    var speakButton = document.querySelector('[data-speak-verdict]');
-    if (speakButton && 'speechSynthesis' in window) {
-        speakButton.addEventListener('click', function () {
-            window.speechSynthesis.cancel();
-            var items = document.querySelectorAll('[data-verdict-text] li p');
-            var stories = '';
-            for (var i = 0; i < items.length; i++) {
-                if (i > 0) stories += '. ';
-                stories += items[i].innerText;
-            }
-            var speech = new SpeechSynthesisUtterance(stories);
-            speech.lang = 'it-IT';
-            speech.rate = 0.95;
-            window.speechSynthesis.speak(speech);
-        });
-    } else if (speakButton) {
-        speakButton.hidden = true;
-    }
 }

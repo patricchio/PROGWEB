@@ -1,13 +1,12 @@
 <section class="dashboard-shell">
     <div class="dashboard-heading">
-        <span class="eyebrow">Ciao, {$current_user.username}</span>
-        <h1>Che pericolo vuoi affrontare?</h1>
-        <p>Crea una partita da solo o prepara una lobby per un massimo di cinque giocatori.</p>
+        <h1>Dashboard</h1>
+        <p>Crea una nuova partita o entra con un codice.</p>
     </div>
 
     <div class="dashboard-grid">
         <form class="panel game-setup" method="post" action="{$base_url}/games">
-            <div class="panel-title"><span>01</span><h2>Crea partita</h2></div>
+            <div class="panel-title"><h2>Crea partita</h2></div>
 
             <div class="field-grid">
                 <label>Giocatori
@@ -37,15 +36,12 @@
                 </label>
             </div>
 
-            <p class="field-help">A ogni turno l’AI inventerà autonomamente un nuovo incipit di vita o di morte.</p>
-
             <button class="button button-full" type="submit">Crea partita</button>
         </form>
 
         <form class="panel join-panel" method="post" action="{$base_url}/join">
-            <div class="panel-title"><span>02</span><h2>Entra con un codice</h2></div>
+            <div class="panel-title"><h2>Entra con un codice</h2></div>
             <p>Fatti inviare il codice di sei caratteri dall’host.</p>
-            <p class="field-help">Per provare due account sullo stesso PC usa una finestra anonima o un altro browser: due schede normali condividono la stessa sessione.</p>
             <label for="game-code">Codice invito</label>
             <input class="code-input" id="game-code" name="code" minlength="6" maxlength="12" pattern="[A-Za-z0-9 -]+" placeholder="A1B2C3" autocomplete="off" autocapitalize="characters" required>
             <button class="button button-secondary button-full" type="submit">Raggiungi la lobby</button>
@@ -54,7 +50,7 @@
 
     {if !empty($recent_games)}
         <section class="recent-games">
-            <div class="panel-title"><span>03</span><h2>Le tue partite</h2></div>
+            <div class="panel-title"><h2>Le tue partite</h2></div>
             <div class="recent-grid">
                 {foreach $recent_games as $recent}
                     <article class="recent-card">

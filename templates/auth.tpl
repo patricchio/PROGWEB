@@ -1,14 +1,9 @@
 <section class="auth-shell">
-    <div class="auth-intro">
-        <span class="eyebrow">La prossima storia ti aspetta</span>
-        {if $mode === 'login'}
-            <h1>Torna nella partita.</h1>
-            <p>Accedi per creare una nuova sfida o raggiungere i tuoi amici.</p>
-        {else}
-            <h1>Crea il tuo giocatore.</h1>
-            <p>Bastano pochi secondi. Le decisioni difficili arriveranno dopo.</p>
-        {/if}
-    </div>
+    {if $mode === 'login'}
+        <h1>Accedi</h1>
+    {else}
+        <h1>Registrati</h1>
+    {/if}
 
     <form class="auth-card" method="post" action="{$base_url}/{if $mode === 'login'}login{else}register{/if}">
 

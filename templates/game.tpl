@@ -1,7 +1,6 @@
 <section class="game-shell" data-game-code="{$game->code}" data-game-phase="{$game->phase}" data-game-round="{$game->round}" data-deadline-at="{$game->deadlineAt|default:0}" data-server-time="{$server_time}" data-single-player="{if $game->maxPlayers === 1}1{else}0{/if}" data-confirmation-grace="{$automatic_confirmation_grace}">
     <header class="game-heading">
         <div>
-            <span class="eyebrow">{if $game->maxPlayers === 1}Modalità single player{else}Partita {$game->code}{/if}</span>
             <h1>{if $game->status === 'LOBBY'}La lobby è pronta.{elseif $game->status === 'FINISHED'}Partita conclusa.{else}Turno {$game->round}{/if}</h1>
         </div>
         <a class="text-link" href="{$base_url}/">← Dashboard</a>
@@ -29,11 +28,9 @@
             {if $game->status === 'LOBBY'}
                 <article class="panel lobby-card">
                     {if $game->maxPlayers === 1}
-                        <span class="scenario-label">Partita singola</span>
                         <h2>Sei pronto ad affrontare il primo pericolo?</h2>
                         <p>Non serve alcun codice: la partita inizierà subito con le impostazioni scelte.</p>
                     {else}
-                        <span class="scenario-label">Codice invito</span>
                         <div class="invite-code">{$game->code}</div>
                         <p>Condividilo con gli amici. La pagina controlla automaticamente quando qualcuno entra.</p>
                     {/if}
@@ -78,16 +75,13 @@
                 </form>
             {elseif $game->phase === 'EVALUATING'}
                 <article class="panel evaluating-card">
-                    <div class="danger-orbit" aria-hidden="true"><span class="danger-core">AI</span></div>
                     <span class="eyebrow">Tempo scaduto</span>
-                    <h2>Il destino sta scrivendo il verdetto...</h2>
-                    <p>Le risposte sono state bloccate e inviate al narratore.</p>
+                    <h2>L'AI sta valutando le risposte...</h2>
                 </article>
             {elseif $game->phase === 'RESULTS' || ($game->status === 'FINISHED' && $game->lastResults)}
                 <article class="panel verdict-card">
                     <div class="verdict-topline">
                         <span class="eyebrow">Verdetto del turno {$game->round}</span>
-                        <button class="speak-button" type="button" data-speak-verdict>🔊 Ascolta il racconto</button>
                     </div>
                     <ul class="result-list" data-verdict-text>
                         {foreach $game->lastResults as $result}
@@ -98,10 +92,6 @@
                             </li>
                         {/foreach}
                     </ul>
-                    <p class="ai-source">
-                        Giudice: {if $game->lastJudgmentSource === 'openai'}OpenAI{elseif $game->lastJudgmentSource === 'ollama'}Ollama locale{else}fallback{/if}
-                        · Narrazione: {if $game->lastStorySource === 'openai'}OpenAI{elseif $game->lastStorySource === 'ollama'}Ollama locale{else}fallback{/if}
-                    </p>
                     {if $game->status === 'FINISHED'}
                         <div class="final-summary">
                             {if $game->winnerUsername}
@@ -119,13 +109,12 @@
                 </article>
             {else}
                 <article class="panel finish-card">
-                    <span class="eyebrow">Fine della storia</span>
                     {if $game->winnerUsername}
                         <h2>{$game->winnerUsername} è sopravvissuto.</h2>
                     {else}
                         <h2>Nessuno è sopravvissuto.</h2>
                     {/if}
-                    <p>Turni giocati: {$game->roundsPlayed}. La cronologia completa resta salvata nel database.</p>
+                    <p>Turni giocati: {$game->roundsPlayed}.</p>
                     <a class="button" href="{$base_url}/">Crea un’altra partita</a>
                 </article>
             {/if}

@@ -26,43 +26,26 @@ class FAIService
     public function createScenario(array $previousScenarios, int $roundNumber): string
     {
         $systemPrompt = <<<'PROMPT'
-Sei l'autore di carte per un gioco di sopravvivenza. Genera un pericolo originale nello stesso stile degli esempi: immediato, semplice, creativo e potenzialmente mortale.
+Sei il generatore di scenari per un gioco di sopravvivenza. Genera un breve scenario di pericolo mortale.
 
-REGOLE OBBLIGATORIE:
-- Scrivi in italiano naturale e grammaticalmente corretto, usando sempre il singolare "tu" e mai "voi" o "vostro".
-- Scrivi una sola frase completa, breve e incisiva, da 4 a 16 parole.
-- Rivolgiti direttamente al giocatore in seconda persona.
-- Non parlare mai in prima persona e non usare "io", "me", "mio" o "mi".
-- Usa una sola idea centrale: una minaccia fisica, una trappola, un'anomalia assurda, una regola mortale oppure un ultimatum bizzarro.
-- Descrivi soltanto il problema; sarà il giocatore a inventare la soluzione.
-- Non aggiungere ambientazione, spiegazioni, antefatti, conseguenze secondarie, oggetti posseduti o persone da salvare.
-- Il rischio mortale deve riguardare sempre il giocatore, mai il nemico o un altro personaggio.
-- Evita nomi propri e riferimenti culturali che richiedono conoscenze esterne.
-- Non copiare, tradurre, parafrasare o combinare gli esempi.
-- Varia sia la categoria del pericolo sia l'inizio della frase rispetto agli scenari precedenti; non usare sempre trasformazioni del corpo.
-- Non scrivere "Cosa fai?", titoli, introduzioni o puntini di sospensione.
+Regole:
+- Scrivi in italiano, una sola frase di massimo 15 parole
+- Lo scenario deve essere un pericolo concreto e realistico (animali, disastri naturali, incidenti, trappole, veicoli, ecc.)
+- Rivolgiti al giocatore con "tu"
+- Descrivi solo il problema, non la soluzione
+- NON usare scenari astratti o surreali (niente trasformazioni del corpo, allergie strane, dimenticare come respirare, ecc.)
+- Cambia completamente categoria rispetto agli scenari precedenti
+- Termina con "Cosa fai?"
 
-ESEMPI DI FORMA, LUNGHEZZA E TONO, NON DI CONTENUTO:
-- Un rinoceronte ti sta caricando.
-- Un serpente velenoso ti ha messo all'angolo.
-- Sei bloccato su una scogliera che si sgretola.
-- Sei intrappolato in una miniera che sta crollando.
-- Sei chiuso in una stanza con una bomba a orologeria.
-- Uno sciame di api assassine ti sta attaccando.
-- Stai precipitando da un aereo e il paracadute non si apre.
-- Una valanga corre verso di te.
-- Il re dei goblin pretende che tu lo intrattenga o morirai.
-- Hai calpestato una mina che esploderà se sollevi il piede.
-- Devi fare buca al prossimo colpo di golf o morirai.
-- La gravità aumenta senza sosta.
-- Hai dimenticato come si respira.
-- Stai invecchiando a velocità spaventosa.
-- Sei allergico alle risate.
-- I freni non funzionano su una discesa ripida.
-- Se starnutisci ancora, morirai.
-- Non riesci più a smettere di correre.
+Esempi:
+- Un orso ti ha bloccato nella tenda. Cosa fai?
+- La barca sta affondando e sei lontano dalla riva. Cosa fai?
+- Sei intrappolato in un edificio in fiamme al terzo piano. Cosa fai?
+- Un'auto senza freni sta per investirti. Cosa fai?
+- Sei caduto in sabbie mobili e stai sprofondando. Cosa fai?
+- Una frana sta per seppellire la strada dove ti trovi. Cosa fai?
 
-Rispondi soltanto con JSON valido: {"scenario":"frase"}.
+Rispondi con JSON: {"scenario":"frase"}
 PROMPT;
         $userPrompt = "Genera una nuova carta.\n"
             . "Usa un contenuto e un inizio di frase diversi dagli scenari precedenti.\n"
@@ -532,12 +515,14 @@ PROMPT;
     private function fallbackScenario(int $roundNumber): string
     {
         $fallbacks = [
-            'L’acqua invade il tunnel e blocca ogni uscita. Cosa fai?',
-            'La cabina precipita mentre i freni smettono di funzionare. Cosa fai?',
-            'Un gas letale riempie rapidamente il laboratorio sigillato. Cosa fai?',
-            'Il ghiaccio cede e la corrente ti trascina via. Cosa fai?',
-            'Le fiamme circondano la stanza mentre il soffitto crolla. Cosa fai?',
-            'Il ponte si spezza sopra un burrone profondissimo. Cosa fai?',
+            'Un cinghiale infuriato sta caricando verso di te. Cosa fai?',
+            'Il ramo a cui sei aggrappato si sta spezzando sopra un crepaccio. Cosa fai?',
+            'I freni della bicicletta si rompono in discesa verso un incrocio trafficato. Cosa fai?',
+            'L\'acqua sale rapidamente in un tunnel senza apparente via d\'uscita. Cosa fai?',
+            'Un cavo dell\'alta tensione cade su una pozzanghera vicino a te. Cosa fai?',
+            'La tenda ha preso fuoco e la cerniera è incastrata. Cosa fai?',
+            'Stai scivolando verso il bordo di un tetto inclinato e ghiacciato. Cosa fai?',
+            'Un treno merci sta per travolgere la tua auto bloccata sui binari. Cosa fai?',
         ];
         $index = max(0, $roundNumber - 1) % count($fallbacks);
         return $fallbacks[$index];

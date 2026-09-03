@@ -10,11 +10,10 @@
 </head>
 <body data-base-url="{$base_url}">
     <header class="site-header">
-        <a class="brand" href="{$base_url}/" aria-label="Death by AI - Home">
-            <span class="brand-mark" aria-hidden="true">D</span>
-            <span>DEATH BY <strong>AI</strong></span>
+        <a class="brand" href="{$base_url}/">
+            <span>Death by AI</span>
         </a>
-        <nav class="site-nav" aria-label="Navigazione principale">
+        <nav class="site-nav">
             {if $current_user}
                 <span class="user-chip">{$current_user.username}</span>
                 <form method="post" action="{$base_url}/logout">
