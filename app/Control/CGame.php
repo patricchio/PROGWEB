@@ -1,15 +1,20 @@
 <?php
 
-declare(strict_types=1);
-
-final class CGame
+class CGame
 {
     private const AUTOMATIC_CONFIRMATION_GRACE_SECONDS = 2;
 
     /**
      * Costruttore: riceve la vista e l'URL base.
      */
-    public function __construct(private VView $view, private string $baseUrl) {}
+    private $view;
+    private $baseUrl;
+
+    public function __construct($view, $baseUrl)
+    {
+        $this->view = $view;
+        $this->baseUrl = $baseUrl;
+    }
 
     /**
      * Mostra la pagina principale o la dashboard se l'utente è loggato.
@@ -22,7 +27,7 @@ final class CGame
         if ($user !== null) {
             try {
                 $games = (new FPersistentManager())->findGamesHostedByUser((int) $user['id']);
-            } catch (Throwable) {
+            } catch (Exception) {
                 // La pagina resta accessibile e mostrerà l'errore solo al primo salvataggio.
             }
         }
@@ -39,7 +44,6 @@ final class CGame
     public function create(): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         $maxPlayers = (int) ($_POST['max_players'] ?? 1);
         $lives = (int) ($_POST['lives'] ?? 2);
         $roundDuration = (int) ($_POST['round_duration'] ?? 30);
@@ -63,7 +67,7 @@ final class CGame
                 $roundDuration
             ));
             $this->redirect('/game/' . $code);
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', 'Impossibile creare la partita: ' . $exception->getMessage());
             $this->redirect('/');
         }
@@ -75,16 +79,15 @@ final class CGame
     public function join(): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         $code = preg_replace('/[^A-Z0-9]/', '', strtoupper((string) ($_POST['code'] ?? ''))) ?? '';
         if (preg_match('/^[A-Z0-9]{6}$/', $code) !== 1) {
             FSession::flash('error', 'Il codice deve contenere 6 caratteri.');
             $this->redirect('/');
         }
         try {
-            (new FPersistentManager())->mutateGame($code, static fn (EGame $game) => $game->addPlayer($user));
+            (new FPersistentManager())->mutateGame($code, function ($game) use ($user) { $game->addPlayer($user); });
             $this->redirect('/game/' . $code);
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', $exception->getMessage());
             $this->redirect('/');
         }
@@ -111,7 +114,7 @@ final class CGame
                 'server_time' => time(),
                 'automatic_confirmation_grace' => self::AUTOMATIC_CONFIRMATION_GRACE_SECONDS,
             ]);
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', $exception->getMessage());
             $this->redirect('/');
         }
@@ -123,19 +126,18 @@ final class CGame
     public function start(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         try {
             $manager = new FPersistentManager();
             $game = $this->requireHost($manager, $code, (int) $user['id']);
             $previousScenarios = $manager->recentScenarios($game->id);
             $scenario = (new FAIService())->createScenario($previousScenarios, $game->round + 1);
-            $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($user, $scenario): void {
+            $manager->mutateGame($game->code, function ($lockedGame) use ($user, $scenario) {
                 if ($lockedGame->hostUserId !== (int) $user['id']) {
                     throw new DomainException('Solo l’host può iniziare.');
                 }
                 $lockedGame->start($scenario);
             });
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', $exception->getMessage());
         }
         $this->redirect('/game/' . strtoupper($code));
@@ -147,7 +149,6 @@ final class CGame
     public function answer(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         $automatic = ($_POST['automatic'] ?? '') === '1';
         $answer = trim((string) ($_POST['answer'] ?? ''));
         $minimumLength = $automatic ? 1 : 3;
@@ -162,7 +163,7 @@ final class CGame
         try {
             $manager = new FPersistentManager();
             $game = $manager->mutateGame(strtoupper($code),
-                static fn (EGame $game) => $game->submitAnswer((int) $user['id'], $answer, $automatic));
+                function ($game) use ($user, $answer, $automatic) { $game->submitAnswer((int) $user['id'], $answer, $automatic); });
             if ($game->maxPlayers === 1) {
                 $this->runEvaluation($manager, $game->code, (int) $user['id'], true);
             }
@@ -171,7 +172,7 @@ final class CGame
                 return;
             }
             FSession::flash('success', 'Risposta confermata. Non può più essere modificata.');
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             if ($automatic) {
                 $this->view->json(['error' => $exception->getMessage()], 409);
                 return;
@@ -187,11 +188,10 @@ final class CGame
     public function evaluate(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         try {
             $manager = new FPersistentManager();
             $this->runEvaluation($manager, strtoupper($code), (int) $user['id']);
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', $exception->getMessage());
         }
         $this->redirect('/game/' . strtoupper($code));
@@ -203,19 +203,18 @@ final class CGame
     public function nextRound(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         try {
             $manager = new FPersistentManager();
             $game = $this->requireHost($manager, $code, (int) $user['id']);
             $previousScenarios = $manager->recentScenarios($game->id);
             $scenario = (new FAIService())->createScenario($previousScenarios, $game->round + 1);
-            $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($user, $scenario): void {
+            $manager->mutateGame($game->code, function ($lockedGame) use ($user, $scenario) {
                 if ($lockedGame->hostUserId !== (int) $user['id']) {
                     throw new DomainException('Solo l’host può continuare.');
                 }
                 $lockedGame->nextRound($scenario);
             });
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', $exception->getMessage());
         }
         $this->redirect('/game/' . strtoupper($code));
@@ -227,12 +226,11 @@ final class CGame
     public function delete(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
-        $this->guardCsrf();
         try {
             $deleted = (new FPersistentManager())->deleteUnfinishedGame(strtoupper($code), (int) $user['id']);
             FSession::flash($deleted ? 'success' : 'error',
                 $deleted ? 'Partita eliminata.' : 'Puoi eliminare soltanto le tue partite non concluse.');
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             FSession::flash('error', $exception->getMessage());
         }
         $this->redirect('/');
@@ -249,10 +247,10 @@ final class CGame
             $this->view->json(['error' => 'Partita non disponibile'], 404);
             return;
         }
-        $players = array_map(static fn (array $player): array => [
+        $players = array_map(function ($player) { return [
             'id' => $player['user_id'], 'username' => $player['username'], 'lives' => $player['lives'],
             'answered' => trim((string) ($player['answer'] ?? '')) !== '',
-        ], array_values($game->players));
+        ]; }, array_values($game->players));
         $this->view->json(['status' => $game->status, 'phase' => $game->phase,
             'round' => $game->round, 'players' => $players,
             'deadline_at' => $game->deadlineAt, 'server_time' => time()]);
@@ -284,7 +282,7 @@ final class CGame
             throw new DomainException('Il timer non è ancora scaduto.');
         }
 
-        $claimedGame = $manager->mutateGame($game->code, function (EGame $lockedGame) use ($userId, $allowBeforeDeadline): void {
+        $claimedGame = $manager->mutateGame($game->code, function ($lockedGame) use ($userId, $allowBeforeDeadline) {
             if (!$lockedGame->hasPlayer($userId)
                 || (!$allowBeforeDeadline && !$this->automaticConfirmationWindowClosed($lockedGame))) {
                 throw new DomainException('Il turno non può ancora essere valutato.');
@@ -294,7 +292,7 @@ final class CGame
         $ai = new FAIService();
         $evaluation = $ai->evaluateSurvival($claimedGame);
         $judgment = $ai->generateStory($claimedGame, $evaluation);
-        $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($judgment): void {
+        $manager->mutateGame($game->code, function ($lockedGame) use ($judgment) {
             $lockedGame->applyResults(
                 $judgment['results'],
                 (string) ($judgment['judgment_source'] ?? 'fallback'),
@@ -309,17 +307,6 @@ final class CGame
     private function automaticConfirmationWindowClosed(EGame $game): bool
     {
         return $game->isDeadlineExpired(time() - self::AUTOMATIC_CONFIRMATION_GRACE_SECONDS);
-    }
-
-    /**
-     * Protegge la rotta verificando il token CSRF inviato.
-     */
-    private function guardCsrf(): void
-    {
-        if (!FSession::verifyCsrf($_POST['csrf_token'] ?? null)) {
-            FSession::flash('error', 'Richiesta scaduta. Riprova.');
-            $this->redirect('/');
-        }
     }
 
     /**
@@ -338,7 +325,7 @@ final class CGame
     /**
      * Reindirizza l'utente a un percorso specificato e termina lo script.
      */
-    private function redirect(string $path): never
+    private function redirect($path)
     {
         header('Location: ' . $this->baseUrl . $path);
         exit;

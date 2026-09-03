@@ -1,15 +1,16 @@
 <?php
 
-declare(strict_types=1);
 
-final class FPersistentManager
+class FPersistentManager
 {
     /**
      * Inizializza il gestore usando la connessione PDO fornita o quella di default.
      */
-    public function __construct(private ?PDO $database = null)
+    private $database;
+
+    public function __construct($database = null)
     {
-        $this->database ??= FDatabase::connection();
+        $this->database = $database !== null ? $database : FDatabase::connection();
     }
 
     /**
@@ -89,7 +90,7 @@ final class FPersistentManager
 
             $this->database->commit();
             return $game;
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             if ($this->database->inTransaction()) {
                 $this->database->rollBack();
             }
@@ -130,7 +131,7 @@ final class FPersistentManager
              ORDER BY g.updated_at DESC LIMIT 8'
         );
         $statement->execute(['user_id' => $userId]);
-        return array_map(static fn (array $row): EGame => EGame::fromSummaryRow($row), $statement->fetchAll());
+        return array_map(function ($row) { return EGame::fromSummaryRow($row); }, $statement->fetchAll());
     }
 
     /**
@@ -146,7 +147,7 @@ final class FPersistentManager
         $statement->bindValue('game_id', $gameId, PDO::PARAM_INT);
         $statement->bindValue('limit', $limit, PDO::PARAM_INT);
         $statement->execute();
-        return array_map(static fn (array $row): string => (string) $row['scenario'], $statement->fetchAll());
+        return array_map(function ($row) { return (string) $row['scenario']; }, $statement->fetchAll());
     }
 
     /**
@@ -177,7 +178,7 @@ final class FPersistentManager
             $this->saveGame($game);
             $this->database->commit();
             return $game;
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             if ($this->database->inTransaction()) {
                 $this->database->rollBack();
             }
@@ -192,7 +193,7 @@ final class FPersistentManager
      */
     private function loadGame(string $code, bool $lock): ?EGame
     {
-        $suffix = $lock ? ' FOR UPDATE' : '';
+        $suffix = '';
 
         $statement = $this->database->prepare("SELECT * FROM games WHERE code = :code$suffix");
         $statement->execute(['code' => $code]);

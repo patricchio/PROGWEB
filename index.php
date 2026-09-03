@@ -1,6 +1,5 @@
 <?php
 
-declare(strict_types=1);
 
 require_once __DIR__ . '/autoload.php';
 
@@ -11,7 +10,7 @@ $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 
-if ($basePath !== '' && $basePath !== '/' && str_starts_with($requestPath, $basePath)) {
+if ($basePath !== '' && $basePath !== '/' && strpos($requestPath, $basePath) === 0) {
     $requestPath = substr($requestPath, strlen($basePath)) ?: '/';
 }
 
@@ -37,7 +36,8 @@ foreach ($routes as [$method, $pattern, $controllerClass, $action]) {
     if ($requestMethod === $method && preg_match($pattern, $requestPath, $matches) === 1) {
         array_shift($matches);
         $controller = new $controllerClass($view, $basePath);
-        $controller->$action(...array_values($matches));
+        $params = array_values($matches);
+        call_user_func_array([$controller, $action], $params);
         exit;
     }
 }

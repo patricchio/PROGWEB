@@ -18,7 +18,6 @@
             {if $current_user}
                 <span class="user-chip">{$current_user.username}</span>
                 <form method="post" action="{$base_url}/logout">
-                    <input type="hidden" name="csrf_token" value="{$csrf_token}">
                     <button class="nav-button" type="submit">Esci</button>
                 </form>
             {else}

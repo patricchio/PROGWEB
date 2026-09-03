@@ -1,8 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
-final class EGame
+class EGame
 {
     /**
      * Round in attesa di persistenza (impostato da applyResults, consumato da
@@ -202,7 +200,7 @@ final class EGame
             if ($result === null) {
                 throw new DomainException('La valutazione AI è incompleta.');
             }
-            $missedDeadline = str_starts_with((string) $player['answer'], '[NESSUNA RISPOSTA');
+            $missedDeadline = substr((string) $player['answer'], 0, 17) === '[NESSUNA RISPOSTA';
             if ($missedDeadline) {
                 $result['outcome'] = 'LOSE_LIFE';
             }
@@ -228,20 +226,20 @@ final class EGame
             'story_source' => $storySource,
             'results' => $roundResults,
         ];
-        $this->lastResults = array_map(static fn (array $result): array => [
+        $this->lastResults = array_map(function ($result) { return [
             'player_id' => $result['user_id'],
             'username' => $result['username'],
             'outcome' => $result['outcome'],
             'answer' => $result['answer'],
             'story' => $result['story'],
             'lives' => $result['lives'],
-        ], $roundResults);
+        ]; }, $roundResults);
         $this->lastJudgmentSource = $judgmentSource;
         $this->lastStorySource = $storySource;
         $this->roundsPlayed++;
 
         $alive = array_values(array_filter($this->players,
-            static fn (array $player): bool => (int) $player['lives'] > 0));
+            function ($player) { return (int) $player['lives'] > 0; }));
         $finished = count($this->players) === 1 ? count($alive) === 0 : count($alive) <= 1;
         if ($finished) {
             $this->status = 'FINISHED';

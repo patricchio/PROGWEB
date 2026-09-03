@@ -11,7 +11,6 @@
     </div>
 
     <form class="auth-card" method="post" action="{$base_url}/{if $mode === 'login'}login{else}register{/if}">
-        <input type="hidden" name="csrf_token" value="{$csrf_token}">
 
         {if !empty($errors)}
             <div class="form-errors" role="alert">

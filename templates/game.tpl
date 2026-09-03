@@ -39,7 +39,6 @@
                     {/if}
                     {if $is_host}
                         <form method="post" action="{$base_url}/game/{$game->code}/start">
-                            <input type="hidden" name="csrf_token" value="{$csrf_token}">
                             <button class="button button-full" type="submit">{if $game->maxPlayers === 1}Inizia la partita{else}Avvia con {$game->players|count} giocatore/i{/if}</button>
                         </form>
                     {else}
@@ -64,7 +63,6 @@
                         </div>
                     {else}
                         <form class="panel answer-card" method="post" action="{$base_url}/game/{$game->code}/answer" data-answer-form>
-                            <input type="hidden" name="csrf_token" value="{$csrf_token}">
                             <label for="answer"><strong>Come continui la storia?</strong></label>
                             <textarea id="answer" name="answer" minlength="3" maxlength="700" rows="5" required></textarea>
                             <button class="button" type="submit">Conferma risposta</button>
@@ -77,7 +75,6 @@
 
                 <div class="waiting"><span></span> {if $game->maxPlayers === 1}La risposta verrà valutata appena la confermi.{else}Il verdetto partirà automaticamente allo scadere del timer.{/if}</div>
                 <form method="post" action="{$base_url}/game/{$game->code}/evaluate" data-auto-evaluate hidden>
-                    <input type="hidden" name="csrf_token" value="{$csrf_token}">
                 </form>
             {elseif $game->phase === 'EVALUATING'}
                 <article class="panel evaluating-card">
@@ -116,7 +113,6 @@
                         <a class="button button-full" href="{$base_url}/">Torna alla dashboard</a>
                     {elseif $is_host}
                         <form method="post" action="{$base_url}/game/{$game->code}/next">
-                            <input type="hidden" name="csrf_token" value="{$csrf_token}">
                             <button class="button button-full" type="submit">Genera il prossimo turno</button>
                         </form>
                     {else}<div class="waiting"><span></span> In attesa del prossimo turno...</div>{/if}

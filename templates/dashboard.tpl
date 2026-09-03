@@ -7,7 +7,6 @@
 
     <div class="dashboard-grid">
         <form class="panel game-setup" method="post" action="{$base_url}/games">
-            <input type="hidden" name="csrf_token" value="{$csrf_token}">
             <div class="panel-title"><span>01</span><h2>Crea partita</h2></div>
 
             <div class="field-grid">
@@ -44,7 +43,6 @@
         </form>
 
         <form class="panel join-panel" method="post" action="{$base_url}/join">
-            <input type="hidden" name="csrf_token" value="{$csrf_token}">
             <div class="panel-title"><span>02</span><h2>Entra con un codice</h2></div>
             <p>Fatti inviare il codice di sei caratteri dall’host.</p>
             <p class="field-help">Per provare due account sullo stesso PC usa una finestra anonima o un altro browser: due schede normali condividono la stessa sessione.</p>
@@ -77,7 +75,6 @@
 
 <dialog class="confirm-dialog" data-delete-dialog>
     <form method="post" data-delete-form>
-        <input type="hidden" name="csrf_token" value="{$csrf_token}">
         <h2>Eliminare la partita?</h2>
         <p>La partita <strong data-delete-code></strong> e il suo stato verranno rimossi definitivamente.</p>
         <div class="dialog-actions">

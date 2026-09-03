@@ -1,8 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
-spl_autoload_register(static function (string $className): void {
+spl_autoload_register(function ($className) {
     $folders = [
         __DIR__ . '/app/Presentation',
         __DIR__ . '/app/Control',

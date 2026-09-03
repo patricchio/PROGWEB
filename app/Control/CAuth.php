@@ -1,16 +1,17 @@
 <?php
 
-declare(strict_types=1);
-
-final class CAuth
+class CAuth
 {
     /**
      * Costruttore: riceve la vista e l'URL base del sito.
      */
-    public function __construct(
-        private VView $view,
-        private string $baseUrl
-    ) {
+    private $view;
+    private $baseUrl;
+
+    public function __construct($view, $baseUrl)
+    {
+        $this->view = $view;
+        $this->baseUrl = $baseUrl;
     }
 
     /**
@@ -53,10 +54,6 @@ final class CAuth
         $password = (string) ($_POST['password'] ?? '');
         $errors = $this->validate($username, $email, $password, true);
 
-        if (!FSession::verifyCsrf($_POST['csrf_token'] ?? null)) {
-            $errors[] = 'La pagina è scaduta. Riprova.';
-        }
-
         if ($errors === []) {
             try {
                 $manager = new FPersistentManager();
@@ -68,7 +65,7 @@ final class CAuth
                     FSession::flash('success', 'Account creato. Benvenuto, ' . $user->username . '!');
                     $this->redirect('/');
                 }
-            } catch (Throwable) {
+            } catch (Exception) {
                 $errors[] = 'Database non disponibile. Avvia MySQL da XAMPP e importa database/schema.sql.';
             }
         }
@@ -85,10 +82,6 @@ final class CAuth
         $password = (string) ($_POST['password'] ?? '');
         $errors = $this->validate('', $email, $password, false);
 
-        if (!FSession::verifyCsrf($_POST['csrf_token'] ?? null)) {
-            $errors[] = 'La pagina è scaduta. Riprova.';
-        }
-
         if ($errors === []) {
             try {
                 $user = (new FPersistentManager())->findUserByEmail($email);
@@ -99,7 +92,7 @@ final class CAuth
                     FSession::flash('success', 'Bentornato, ' . $user->username . '!');
                     $this->redirect('/');
                 }
-            } catch (Throwable) {
+            } catch (Exception) {
                 $errors[] = 'Database non disponibile. Avvia MySQL da XAMPP.';
             }
         }
@@ -112,10 +105,6 @@ final class CAuth
      */
     public function logout(): void
     {
-        if (!FSession::verifyCsrf($_POST['csrf_token'] ?? null)) {
-            http_response_code(403);
-            return;
-        }
         FSession::logout();
         header('Location: ' . $this->baseUrl . '/');
     }
@@ -123,7 +112,7 @@ final class CAuth
     /**
      * Controlla la validità dei dati (email, password, username).
      */
-    private function validate(string $username, string $email, string $password, bool $registration): array
+    private function validate($username, $email, $password, $registration)
     {
         $errors = [];
         if ($registration && preg_match('/^[A-Za-z0-9_]{3,24}$/', $username) !== 1) {
@@ -141,7 +130,7 @@ final class CAuth
     /**
      * Mostra nuovamente il form (login o registrazione) evidenziando gli errori.
      */
-    private function renderForm(string $mode, array $errors, array $old): void
+    private function renderForm($mode, $errors, $old)
     {
         http_response_code(422);
         $this->view->render('auth.tpl', [
@@ -156,7 +145,7 @@ final class CAuth
     /**
      * Reindirizza l'utente a un percorso specificato e termina l'esecuzione.
      */
-    private function redirect(string $path): never
+    private function redirect($path)
     {
         header('Location: ' . $this->baseUrl . $path);
         exit;

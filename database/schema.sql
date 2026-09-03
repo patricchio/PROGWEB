@@ -38,9 +38,9 @@ CREATE TABLE games (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     finished_at DATETIME NULL,
-    CONSTRAINT fk_games_host FOREIGN KEY (host_user_id)
+    FOREIGN KEY (host_user_id)
         REFERENCES users(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_games_winner FOREIGN KEY (winner_user_id)
+    FOREIGN KEY (winner_user_id)
         REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_games_host (host_user_id),
     INDEX idx_games_status (status)
@@ -54,9 +54,9 @@ CREATE TABLE game_players (
     lives TINYINT UNSIGNED NOT NULL,
     current_answer VARCHAR(700) NULL,
     joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_game_players_game FOREIGN KEY (game_id)
+    FOREIGN KEY (game_id)
         REFERENCES games(id) ON DELETE CASCADE,
-    CONSTRAINT fk_game_players_user FOREIGN KEY (user_id)
+    FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_game_player (game_id, user_id)
 ) ENGINE=InnoDB;
@@ -70,7 +70,7 @@ CREATE TABLE rounds (
     judgment_source VARCHAR(20) NOT NULL,
     story_source VARCHAR(20) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_rounds_game FOREIGN KEY (game_id)
+    FOREIGN KEY (game_id)
         REFERENCES games(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_game_round (game_id, round_number)
 ) ENGINE=InnoDB;
@@ -84,9 +84,9 @@ CREATE TABLE round_results (
     outcome ENUM('SAFE', 'LOSE_LIFE') NOT NULL,
     story TEXT NOT NULL,
     lives_after TINYINT UNSIGNED NOT NULL,
-    CONSTRAINT fk_round_results_round FOREIGN KEY (round_id)
+    FOREIGN KEY (round_id)
         REFERENCES rounds(id) ON DELETE CASCADE,
-    CONSTRAINT fk_round_results_player FOREIGN KEY (game_player_id)
+    FOREIGN KEY (game_player_id)
         REFERENCES game_players(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_round_player (round_id, game_player_id)
 ) ENGINE=InnoDB;

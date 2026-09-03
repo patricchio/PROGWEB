@@ -1,8 +1,7 @@
 <?php
 
-declare(strict_types=1);
 
-final class FAIService
+class FAIService
 {
     private const SCENARIO_TEMPERATURE = 0.80;
     private const JUDGMENT_TEMPERATURE = 0.05;
@@ -82,7 +81,7 @@ PROMPT;
                     true
                 );
                 return $this->validateScenario($response);
-            } catch (Throwable $exception) {
+            } catch (Exception $exception) {
                 error_log("FAIService::createScenario tentativo {$attempt}: {$exception->getMessage()}");
             }
         }
@@ -123,7 +122,7 @@ PROMPT;
             );
             $results = $this->validateEvaluation($data, $players);
             return ['results' => $results, 'source' => (string) $this->config['provider']];
-        } catch (Throwable $exception) {
+        } catch (Exception $exception) {
             error_log('FAIService::evaluateSurvival: ' . $exception->getMessage());
             return ['results' => $this->fallbackEvaluation($players, $game), 'source' => 'fallback'];
         }
@@ -187,7 +186,7 @@ PROMPT;
                         throw new RuntimeException('Il racconto contraddice il verdetto.');
                     }
                     break;
-                } catch (Throwable $exception) {
+                } catch (Exception $exception) {
                     $story = '';
                     error_log("FAIService::generateStory player {$id} tentativo {$attempt}: "
                         . $exception->getMessage());
@@ -227,7 +226,7 @@ PROMPT;
             $this->requestContent($systemPrompt, $userPrompt, $maxTokens, $temperature, true),
             true,
             512,
-            JSON_THROW_ON_ERROR
+            0
         );
     }
 
@@ -311,7 +310,7 @@ PROMPT;
             CURLOPT_CONNECTTIMEOUT => 3,
             CURLOPT_TIMEOUT => 35,
             CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
         ]);
         $body = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
@@ -320,7 +319,7 @@ PROMPT;
         if (!is_string($body) || $status < 200 || $status >= 300) {
             throw new RuntimeException($error !== '' ? $error : 'Errore HTTP AI ' . $status);
         }
-        return json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        return json_decode($body, true);
     }
 
     /**
@@ -404,7 +403,7 @@ PROMPT;
             if (!isset($playersById[$id]) || isset($seen[$id]) || !in_array($outcome, ['SAFE', 'LOSE_LIFE'], true)) {
                 throw new RuntimeException('Verdetto AI non valido.');
             }
-            $missing = str_starts_with($playersById[$id]['continuation'], '[NESSUNA RISPOSTA');
+            $missing = substr($playersById[$id]['continuation'], 0, 17) === '[NESSUNA RISPOSTA';
             $resultsById[$id] = [
                 'player_id' => $id,
                 'outcome' => $missing ? 'LOSE_LIFE' : $outcome,
@@ -442,7 +441,7 @@ PROMPT;
         }
 
         $story = trim($this->normalizeText($story), " \t\n\r\0\x0B\"");
-        if ($story === '' || $story === $response && str_starts_with($response, '{')) {
+        if ($story === '' || $story === $response && substr($response, 0, 1) === '{') {
             throw new RuntimeException('Formato del racconto non valido.');
         }
         if (preg_match('/(?:\.\.\.|\x{2026})$/u', $story) === 1) {
@@ -484,7 +483,7 @@ PROMPT;
         $results = [];
         foreach ($players as $player) {
             $continuation = trim($player['continuation']);
-            $missing = str_starts_with($continuation, '[NESSUNA RISPOSTA');
+            $missing = substr($continuation, 0, 17) === '[NESSUNA RISPOSTA';
             $words = preg_split('/\s+/u', $continuation, -1, PREG_SPLIT_NO_EMPTY) ?: [];
             $seed = (string) $game->scenario . '|' . $game->round
                 . '|' . $continuation . '|' . $player['player_id'];
@@ -512,7 +511,7 @@ PROMPT;
             $id = (int) $decision['player_id'];
             $name = $playersById[$id]['username'] ?? 'Il giocatore';
             $lose = $decision['outcome'] === 'LOSE_LIFE';
-            $missing = str_starts_with((string) ($playersById[$id]['continuation'] ?? ''), '[NESSUNA RISPOSTA');
+            $missing = substr((string) ($playersById[$id]['continuation'] ?? ''), 0, 17) === '[NESSUNA RISPOSTA';
             $results[] = $decision + [
                 'story' => $missing
                     ? "{$name} resta immobile mentre il pericolo si avvicina e ogni secondo rende la situazione più disperata. Nessun piano arriva in tempo, così lo scenario prende rapidamente il controllo. La via di fuga si chiude proprio quando sarebbe servita una decisione. Il silenzio diventa quindi la scelta peggiore possibile: {$name} viene travolto dagli eventi e perde una vita."
