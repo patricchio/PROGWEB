@@ -191,10 +191,16 @@ class FPersistentManager
     }
 
     /**
-     * Elimina fisicamente un utente dal sistema.
+     * Elimina fisicamente un utente dal sistema (e tutte le partite che ha creato).
      */
     public function deleteUser(int $userId): bool
     {
+        // Rimuoviamo prima le partite ospitate da questo utente per evitare l'errore
+        // di Integrity Constraint (ON DELETE RESTRICT su host_user_id).
+        // I round, giocatori e risultati verranno eliminati a cascata da MySQL.
+        $statementGames = $this->database->prepare('DELETE FROM games WHERE host_user_id = :id');
+        $statementGames->execute(['id' => $userId]);
+
         $statement = $this->database->prepare('DELETE FROM users WHERE id = :id');
         $statement->execute(['id' => $userId]);
         return $statement->rowCount() === 1;
