@@ -6,8 +6,14 @@ final class CGame
 {
     private const AUTOMATIC_CONFIRMATION_GRACE_SECONDS = 2;
 
+    /**
+     * Costruttore: riceve la vista e l'URL base.
+     */
     public function __construct(private VView $view, private string $baseUrl) {}
 
+    /**
+     * Mostra la pagina principale o la dashboard se l'utente è loggato.
+     */
     public function home(): void
     {
         $user = FSession::user();
@@ -27,6 +33,9 @@ final class CGame
         ]);
     }
 
+    /**
+     * Crea una nuova partita leggendo i parametri dal form.
+     */
     public function create(): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -60,6 +69,9 @@ final class CGame
         }
     }
 
+    /**
+     * Fa entrare un utente in una partita tramite il codice inserito.
+     */
     public function join(): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -78,6 +90,9 @@ final class CGame
         }
     }
 
+    /**
+     * Mostra l'interfaccia di una specifica partita.
+     */
     public function show(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -108,6 +123,9 @@ final class CGame
         }
     }
 
+    /**
+     * L'host avvia la partita e genera il primo scenario.
+     */
     public function start(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -128,6 +146,9 @@ final class CGame
         $this->redirect('/game/' . strtoupper($code));
     }
 
+    /**
+     * Salva la risposta di un utente per il turno corrente.
+     */
     public function answer(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -165,6 +186,9 @@ final class CGame
         $this->redirect('/game/' . strtoupper($code));
     }
 
+    /**
+     * Valuta le risposte di tutti i giocatori al termine del turno.
+     */
     public function evaluate(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -178,6 +202,9 @@ final class CGame
         $this->redirect('/game/' . strtoupper($code));
     }
 
+    /**
+     * Passa al round successivo generando un nuovo scenario.
+     */
     public function nextRound(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -200,6 +227,9 @@ final class CGame
         $this->redirect('/game/' . strtoupper($code));
     }
 
+    /**
+     * Elimina la partita (solo per l'host, se non è terminata).
+     */
     public function delete(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -214,6 +244,9 @@ final class CGame
         $this->redirect('/');
     }
 
+    /**
+     * Endpoint API (AJAX) per ottenere lo stato corrente della partita.
+     */
     public function state(string $code): void
     {
         $user = FSession::requireUser($this->baseUrl);
@@ -231,6 +264,9 @@ final class CGame
             'deadline_at' => $game->state['deadline_at'] ?? null, 'server_time' => time()]);
     }
 
+    /**
+     * Controlla che l'utente loggato sia effettivamente l'host della partita.
+     */
     private function requireHost(FPersistentManager $manager, string $code, int $userId): EGame
     {
         $game = $manager->findGameByCode(strtoupper($code));
@@ -240,6 +276,9 @@ final class CGame
         return $game;
     }
 
+    /**
+     * Gestisce la logica centrale di valutazione chiamando l'IA.
+     */
     private function runEvaluation(FPersistentManager $manager, string $code, int $userId,
         bool $allowBeforeDeadline = false): void
     {
@@ -270,11 +309,17 @@ final class CGame
         });
     }
 
+    /**
+     * Controlla se è trascorso il periodo di tolleranza per le risposte automatiche.
+     */
     private function automaticConfirmationWindowClosed(EGame $game): bool
     {
         return $game->isDeadlineExpired(time() - self::AUTOMATIC_CONFIRMATION_GRACE_SECONDS);
     }
 
+    /**
+     * Protegge la rotta verificando il token CSRF inviato.
+     */
     private function guardCsrf(): void
     {
         if (!FSession::verifyCsrf($_POST['csrf_token'] ?? null)) {
@@ -283,6 +328,9 @@ final class CGame
         }
     }
 
+    /**
+     * Genera un codice casuale di 6 caratteri alfanumerici per le nuove partite.
+     */
     private function generateGameCode(): string
     {
         $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -293,6 +341,9 @@ final class CGame
         return $code;
     }
 
+    /**
+     * Reindirizza l'utente a un percorso specificato e termina lo script.
+     */
     private function redirect(string $path): never
     {
         header('Location: ' . $this->baseUrl . $path);

@@ -6,6 +6,9 @@ final class VView
 {
     private Smarty $smarty;
 
+    /**
+     * Inizializza il motore di template Smarty configurando le directory.
+     */
     public function __construct(string $projectRoot)
     {
         require_once $projectRoot . '/lib/smarty/Smarty.class.php';
@@ -21,6 +24,9 @@ final class VView
         $this->smarty->escape_html = true;
     }
 
+    /**
+     * Renderizza un template Smarty passandogli i dati forniti.
+     */
     public function render(string $template, array $data = []): void
     {
         $this->smarty->assign($data);
@@ -31,6 +37,9 @@ final class VView
         $this->smarty->display('layout.tpl');
     }
 
+    /**
+     * Invia una risposta JSON al client con il codice di stato HTTP specificato.
+     */
     public function json(array $data, int $status = 200): void
     {
         http_response_code($status);

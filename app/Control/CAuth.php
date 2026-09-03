@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 final class CAuth
 {
+    /**
+     * Costruttore: riceve la vista e l'URL base del sito.
+     */
     public function __construct(
         private VView $view,
         private string $baseUrl
     ) {
     }
 
+    /**
+     * Mostra la pagina di login (se non si è già loggati).
+     */
     public function showLogin(): void
     {
         if (FSession::user() !== null) {
@@ -22,6 +28,9 @@ final class CAuth
         ]);
     }
 
+    /**
+     * Mostra la pagina di registrazione (se non si è già loggati).
+     */
     public function showRegister(): void
     {
         if (FSession::user() !== null) {
@@ -34,6 +43,9 @@ final class CAuth
         ]);
     }
 
+    /**
+     * Gestisce la sottomissione del form di registrazione.
+     */
     public function register(): void
     {
         $username = trim((string) ($_POST['username'] ?? ''));
@@ -64,6 +76,9 @@ final class CAuth
         $this->renderForm('register', $errors, ['username' => $username, 'email' => $email]);
     }
 
+    /**
+     * Gestisce la sottomissione del form di login.
+     */
     public function login(): void
     {
         $email = mb_strtolower(trim((string) ($_POST['email'] ?? '')));
@@ -92,6 +107,9 @@ final class CAuth
         $this->renderForm('login', $errors, ['email' => $email]);
     }
 
+    /**
+     * Effettua il logout dell'utente in sicurezza, controllando il CSRF.
+     */
     public function logout(): void
     {
         if (!FSession::verifyCsrf($_POST['csrf_token'] ?? null)) {
@@ -102,6 +120,9 @@ final class CAuth
         header('Location: ' . $this->baseUrl . '/');
     }
 
+    /**
+     * Controlla la validità dei dati (email, password, username).
+     */
     private function validate(string $username, string $email, string $password, bool $registration): array
     {
         $errors = [];
@@ -117,6 +138,9 @@ final class CAuth
         return $errors;
     }
 
+    /**
+     * Mostra nuovamente il form (login o registrazione) evidenziando gli errori.
+     */
     private function renderForm(string $mode, array $errors, array $old): void
     {
         http_response_code(422);
@@ -129,6 +153,9 @@ final class CAuth
         ]);
     }
 
+    /**
+     * Reindirizza l'utente a un percorso specificato e termina l'esecuzione.
+     */
     private function redirect(string $path): never
     {
         header('Location: ' . $this->baseUrl . $path);

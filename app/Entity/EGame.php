@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 final class EGame
 {
+    /**
+     * Inizializza un'istanza della partita con tutti i suoi dati e stato.
+     */
     public function __construct(
         public int $id,
         public string $code,
@@ -15,6 +18,9 @@ final class EGame
     ) {
     }
 
+    /**
+     * Crea una nuova partita impostandola nello stato di LOBBY.
+     */
     public static function create(string $code, array $host, int $maxPlayers, int $lives,
         int $roundDuration = 30): self
     {
@@ -36,6 +42,9 @@ final class EGame
             ]);
     }
 
+    /**
+     * Ricostruisce un oggetto partita a partire dai dati letti dal database.
+     */
     public static function fromRow(array $row): self
     {
         $state = json_decode((string) $row['state_json'], true, 512, JSON_THROW_ON_ERROR);
@@ -51,6 +60,9 @@ final class EGame
             $state);
     }
 
+    /**
+     * Aggiunge un nuovo giocatore alla partita se c'è spazio e non è già iniziata.
+     */
     public function addPlayer(array $user): void
     {
         if ($this->status !== 'LOBBY') {
@@ -70,6 +82,9 @@ final class EGame
         ];
     }
 
+    /**
+     * Avvia la partita cambiando lo stato in ACTIVE e impostando il primo scenario.
+     */
     public function start(string $scenario): void
     {
         if ($this->status !== 'LOBBY') {
@@ -82,6 +97,9 @@ final class EGame
         $this->state['deadline_at'] = time() + (int) $this->state['round_duration_seconds'];
     }
 
+    /**
+     * Registra la risposta (azione) di un giocatore per il turno corrente.
+     */
     public function submitAnswer(int $userId, string $answer, bool $automatic = false): void
     {
         if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'OPEN') {
@@ -100,6 +118,9 @@ final class EGame
         $this->state['players'][$index]['answer'] = $answer;
     }
 
+    /**
+     * Prepara il turno per la valutazione, penalizzando chi non ha risposto in tempo.
+     */
     public function prepareEvaluation(): void
     {
         if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'OPEN') {
@@ -114,6 +135,9 @@ final class EGame
         $this->state['phase'] = 'EVALUATING';
     }
 
+    /**
+     * Applica i risultati calcolati dall'IA, aggiorna le vite e chiude il turno o la partita.
+     */
     public function applyResults(array $results, string $judgmentSource = 'fallback',
         string $storySource = 'fallback'): void
     {
@@ -182,6 +206,9 @@ final class EGame
         }
     }
 
+    /**
+     * Inizia un nuovo round impostando un nuovo scenario e resettando il timer.
+     */
     public function nextRound(string $scenario): void
     {
         if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'RESULTS') {
@@ -194,17 +221,26 @@ final class EGame
         $this->state['last_results'] = [];
     }
 
+    /**
+     * Controlla se un determinato utente partecipa a questa partita.
+     */
     public function hasPlayer(int $userId): bool
     {
         return $this->playerIndex($userId) !== null;
     }
 
+    /**
+     * Verifica se il tempo limite per il turno corrente è scaduto.
+     */
     public function isDeadlineExpired(?int $now = null): bool
     {
         $deadline = (int) ($this->state['deadline_at'] ?? 0);
         return $deadline > 0 && ($now ?? time()) >= $deadline;
     }
 
+    /**
+     * Cerca un giocatore tramite il suo ID e restituisce l'indice nell'array.
+     */
     private function playerIndex(int $userId): ?int
     {
         foreach ($this->state['players'] as $index => $player) {

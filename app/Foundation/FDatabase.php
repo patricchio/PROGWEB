@@ -6,6 +6,9 @@ final class FDatabase
 {
     private static ?PDO $connection = null;
 
+    /**
+     * Restituisce la connessione singleton al database PDO.
+     */
     public static function connection(): PDO
     {
         if (self::$connection instanceof PDO) {

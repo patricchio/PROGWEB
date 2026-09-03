@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 final class FPersistentManager
 {
+    /**
+     * Inizializza il gestore usando la connessione PDO fornita o quella di default.
+     */
     public function __construct(private ?PDO $database = null)
     {
         $this->database ??= FDatabase::connection();
     }
 
+    /**
+     * Crea un nuovo utente nel database e ne restituisce l'istanza.
+     */
     public function createUser(string $username, string $email, string $passwordHash): EUser
     {
         $statement = $this->database->prepare(
@@ -19,6 +25,9 @@ final class FPersistentManager
         return new EUser((int) $this->database->lastInsertId(), $username, $email, $passwordHash);
     }
 
+    /**
+     * Cerca un utente tramite indirizzo email. Restituisce null se non esiste.
+     */
     public function findUserByEmail(string $email): ?EUser
     {
         $statement = $this->database->prepare('SELECT * FROM users WHERE email = :email LIMIT 1');
@@ -28,6 +37,9 @@ final class FPersistentManager
         return $row === false ? null : EUser::fromRow($row);
     }
 
+    /**
+     * Verifica se uno username o un'email sono già utilizzati da un altro utente.
+     */
     public function usernameOrEmailExists(string $username, string $email): bool
     {
         $statement = $this->database->prepare(
@@ -38,6 +50,9 @@ final class FPersistentManager
         return $statement->fetchColumn() !== false;
     }
 
+    /**
+     * Salva una nuova partita nel database e le assegna un ID.
+     */
     public function createGame(EGame $game): EGame
     {
         $statement = $this->database->prepare(
@@ -59,6 +74,9 @@ final class FPersistentManager
         return $game;
     }
 
+    /**
+     * Cerca una partita in base al suo codice a 6 caratteri.
+     */
     public function findGameByCode(string $code): ?EGame
     {
         $statement = $this->database->prepare('SELECT * FROM games WHERE code = :code LIMIT 1');
@@ -67,6 +85,9 @@ final class FPersistentManager
         return $row === false ? null : EGame::fromRow($row);
     }
 
+    /**
+     * Verifica se un codice partita esiste già.
+     */
     public function gameCodeExists(string $code): bool
     {
         $statement = $this->database->prepare('SELECT 1 FROM games WHERE code = :code LIMIT 1');
@@ -74,6 +95,9 @@ final class FPersistentManager
         return $statement->fetchColumn() !== false;
     }
 
+    /**
+     * Recupera le ultime partite in cui l'utente specificato è host.
+     */
     public function findGamesHostedByUser(int $userId): array
     {
         $statement = $this->database->prepare(
@@ -83,6 +107,9 @@ final class FPersistentManager
         return array_map(static fn (array $row): EGame => EGame::fromRow($row), $statement->fetchAll());
     }
 
+    /**
+     * Elimina una partita dal database, solo se l'utente ne è host e se non è già finita.
+     */
     public function deleteUnfinishedGame(string $code, int $hostUserId): bool
     {
         $statement = $this->database->prepare(
@@ -92,6 +119,9 @@ final class FPersistentManager
         return $statement->rowCount() === 1;
     }
 
+    /**
+     * Modifica lo stato di una partita in modo sicuro (transazione atomica e blocco di riga).
+     */
     public function mutateGame(string $code, callable $mutation): EGame
     {
         $this->database->beginTransaction();

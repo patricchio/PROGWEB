@@ -11,11 +11,17 @@ final class FAIService
 
     private array $config;
 
+    /**
+     * Carica la configurazione AI dal file config.php.
+     */
     public function __construct()
     {
         $this->config = (require dirname(__DIR__, 2) . '/config/config.php')['ai'];
     }
 
+    /**
+     * Crea un nuovo scenario (pericolo mortale) usando l'intelligenza artificiale.
+     */
     public function createScenario(EGame $game): string
     {
         $previousScenarios = array_slice(array_values(array_filter(array_column(
@@ -85,7 +91,9 @@ PROMPT;
         return $this->fallbackScenario($game);
     }
 
-    /** Prima chiamata AI: decide soltanto chi è al sicuro e chi perde una vita. */
+    /** 
+     * Prima chiamata AI: decide soltanto chi è al sicuro e chi perde una vita. 
+     */
     public function evaluateSurvival(EGame $game): array
     {
         $players = $this->livingPlayers($game);
@@ -122,7 +130,9 @@ PROMPT;
         }
     }
 
-    /** Chiamate narrative individuali: raccontano il verdetto già deciso, senza cambiarlo. */
+    /** 
+     * Chiamate narrative individuali: raccontano il verdetto già deciso, senza cambiarlo. 
+     */
     public function generateStory(EGame $game, array $evaluation): array
     {
         $players = $this->livingPlayers($game);
@@ -204,6 +214,9 @@ PROMPT;
         ];
     }
 
+    /**
+     * Fa una richiesta all'IA e forza la decodifica dell'output come JSON.
+     */
     private function requestJson(
         string $systemPrompt,
         string $userPrompt,
@@ -219,6 +232,9 @@ PROMPT;
         );
     }
 
+    /**
+     * Invia la richiesta HTTP alle API OpenAI o Ollama.
+     */
     private function requestContent(
         string $systemPrompt,
         string $userPrompt,
@@ -284,6 +300,9 @@ PROMPT;
         return $content;
     }
 
+    /**
+     * Esegue effettivamente la chiamata cURL al server specificato.
+     */
     private function postJson(string $url, array $payload, array $headers = []): array
     {
         $handle = curl_init($url);
@@ -305,6 +324,9 @@ PROMPT;
         return json_decode($body, true, 512, JSON_THROW_ON_ERROR);
     }
 
+    /**
+     * Estrae i giocatori vivi dalla partita per fornirli all'IA.
+     */
     private function livingPlayers(EGame $game): array
     {
         $players = [];
@@ -320,6 +342,9 @@ PROMPT;
         return $players;
     }
 
+    /**
+     * Valida lo scenario restituito dall'IA, assicurandosi che non sia vuoto o troncato.
+     */
     private function validateScenario(string $response): string
     {
         $response = trim((string) preg_replace('/^```(?:json)?\s*|\s*```$/iu', '', trim($response)));
@@ -360,6 +385,9 @@ PROMPT;
         return $scenario . ' Cosa fai?';
     }
 
+    /**
+     * Controlla che i verdetti AI siano formattati correttamente (SAFE/LOSE_LIFE).
+     */
     private function validateEvaluation(array $data, array $players): array
     {
         if (!is_array($data['results'] ?? null)) {
@@ -394,6 +422,9 @@ PROMPT;
         return $results;
     }
 
+    /**
+     * Valida il racconto restituito e lo pulisce da codice spurio.
+     */
     private function validateStoryResponse(string $response): string
     {
         $response = trim((string) preg_replace('/^```(?:json)?\s*|\s*```$/iu', '', trim($response)));
@@ -424,6 +455,9 @@ PROMPT;
         return $story;
     }
 
+    /**
+     * Verifica che la storia generata dichiari l'esito corretto.
+     */
     private function storyStatesOutcome(string $story, string $outcome): bool
     {
         if ($outcome === 'LOSE_LIFE') {
@@ -432,6 +466,9 @@ PROMPT;
         return preg_match('/\b(sopravvive|salvo|salva|conserva|mantiene)\b.{0,35}\bvit[ae]?\b/iu', $story) === 1;
     }
 
+    /**
+     * Verifica che la storia generata non contraddica il verdetto assegnato in precedenza.
+     */
     private function storyContradictsOutcome(string $story, string $outcome): bool
     {
         if ($outcome === 'LOSE_LIFE') {
@@ -440,6 +477,9 @@ PROMPT;
         return preg_match('/\b(perde|perso|perdendo)\b.{0,25}\bvit[ae]\b|\b(muore|soccombe)\b/iu', $story) === 1;
     }
 
+    /**
+     * Logica di fallback: valuta casualmente (ma in modo deterministico) in caso di guasto API.
+     */
     private function fallbackEvaluation(array $players, EGame $game): array
     {
         $results = [];
@@ -459,6 +499,9 @@ PROMPT;
         return $results;
     }
 
+    /**
+     * Logica di fallback per le storie in caso di guasto API.
+     */
     private function fallbackStories(array $players, array $decisions): array
     {
         $playersById = [];
@@ -485,6 +528,9 @@ PROMPT;
         ];
     }
 
+    /**
+     * Fornisce scenari prefissati se l'IA non riesce a generarli.
+     */
     private function fallbackScenario(EGame $game): string
     {
         $fallbacks = [
@@ -499,6 +545,9 @@ PROMPT;
         return $fallbacks[$index];
     }
 
+    /**
+     * Pulisce stringhe rimuovendo spazi multipli.
+     */
     private function normalizeText(string $text): string
     {
         return trim((string) preg_replace('/\s+/u', ' ', $text));
