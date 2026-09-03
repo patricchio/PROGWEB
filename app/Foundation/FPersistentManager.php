@@ -19,11 +19,11 @@ class FPersistentManager
     public function createUser(string $username, string $email, string $passwordHash): EUser
     {
         $statement = $this->database->prepare(
-            'INSERT INTO users (username, email, password_hash) VALUES (:username, :email, :password_hash)'
+            'INSERT INTO users (username, email, password_hash, is_admin) VALUES (:username, :email, :password_hash, 0)'
         );
         $statement->execute(['username' => $username, 'email' => $email, 'password_hash' => $passwordHash]);
 
-        return new EUser((int) $this->database->lastInsertId(), $username, $email, $passwordHash);
+        return new EUser((int) $this->database->lastInsertId(), $username, $email, $passwordHash, false);
     }
 
     /**
@@ -118,15 +118,15 @@ class FPersistentManager
     }
 
     /**
-     * Recupera le ultime partite in cui l'utente specificato è host, con il
-     * solo conteggio dei partecipanti (senza caricare giocatori e risultati).
+     * Recupera le ultime partite a cui l'utente ha partecipato.
      */
-    public function findGamesHostedByUser(int $userId): array
+    public function findGamesByUser(int $userId): array
     {
         $statement = $this->database->prepare(
-            'SELECT g.*, COUNT(gp.id) AS player_count
-             FROM games g LEFT JOIN game_players gp ON gp.game_id = g.id
-             WHERE g.host_user_id = :user_id
+            'SELECT g.*, COUNT(gp2.id) AS player_count
+             FROM games g
+             JOIN game_players gp ON gp.game_id = g.id AND gp.user_id = :user_id
+             LEFT JOIN game_players gp2 ON gp2.game_id = g.id
              GROUP BY g.id
              ORDER BY g.updated_at DESC LIMIT 8'
         );
@@ -160,6 +160,43 @@ class FPersistentManager
             'DELETE FROM games WHERE code = :code AND host_user_id = :host_user_id AND status <> "FINISHED"'
         );
         $statement->execute(['code' => $code, 'host_user_id' => $hostUserId]);
+        return $statement->rowCount() === 1;
+    }
+
+    /**
+     * Recupera tutte le partite attive (o in lobby) per il pannello moderatore.
+     */
+    public function findAllActiveGames(): array
+    {
+        $statement = $this->database->prepare(
+            'SELECT g.*, COUNT(gp.id) AS player_count
+             FROM games g
+             LEFT JOIN game_players gp ON gp.game_id = g.id
+             WHERE g.status <> "FINISHED"
+             GROUP BY g.id
+             ORDER BY g.updated_at DESC'
+        );
+        $statement->execute();
+        return array_map(function ($row) { return EGame::fromSummaryRow($row); }, $statement->fetchAll());
+    }
+
+    /**
+     * Recupera tutti gli utenti per il pannello moderatore.
+     */
+    public function findAllUsers(): array
+    {
+        $statement = $this->database->prepare('SELECT * FROM users ORDER BY created_at DESC');
+        $statement->execute();
+        return array_map(function ($row) { return EUser::fromRow($row); }, $statement->fetchAll());
+    }
+
+    /**
+     * Elimina fisicamente un utente dal sistema.
+     */
+    public function deleteUser(int $userId): bool
+    {
+        $statement = $this->database->prepare('DELETE FROM users WHERE id = :id');
+        $statement->execute(['id' => $userId]);
         return $statement->rowCount() === 1;
     }
 

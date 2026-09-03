@@ -165,7 +165,7 @@ class EGame
     public function prepareEvaluation(): void
     {
         if ($this->status !== 'ACTIVE' || $this->phase !== 'OPEN') {
-            throw new DomainException('Il turno è già in valutazione.');
+            return;
         }
         foreach ($this->players as &$player) {
             if ($player['lives'] > 0 && trim((string) ($player['answer'] ?? '')) === '') {

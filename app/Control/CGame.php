@@ -26,7 +26,7 @@ class CGame
         $games = [];
         if ($user !== null) {
             try {
-                $games = (new FPersistentManager())->findGamesHostedByUser((int) $user['id']);
+                $games = (new FPersistentManager())->findGamesByUser((int) $user['id']);
             } catch (Exception) {
                 // La pagina resta accessibile e mostrerà l'errore solo al primo salvataggio.
             }
@@ -171,7 +171,7 @@ class CGame
                 $this->view->json(['confirmed' => true]);
                 return;
             }
-            FSession::flash('success', 'Risposta confermata. Non può più essere modificata.');
+            // redirect senza messaggio, la risposta è visibile nella pagina
         } catch (Exception $exception) {
             if ($automatic) {
                 $this->view->json(['error' => $exception->getMessage()], 409);

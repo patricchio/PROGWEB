@@ -17,7 +17,12 @@ class FSession
      */
     public static function login(EUser $user): void
     {
-        $_SESSION['user'] = ['id' => $user->id, 'username' => $user->username, 'email' => $user->email];
+        $_SESSION['user'] = [
+            'id' => $user->id,
+            'username' => $user->username,
+            'email' => $user->email,
+            'is_admin' => $user->isAdmin,
+        ];
     }
 
     /**

@@ -16,6 +16,9 @@
         <nav class="site-nav">
             {if $current_user}
                 <span class="user-chip">{$current_user.username}</span>
+                {if $current_user.is_admin}
+                    <a href="{$base_url}/admin" style="color:var(--acid);">Admin</a>
+                {/if}
                 <form method="post" action="{$base_url}/logout">
                     <button class="nav-button" type="submit">Esci</button>
                 </form>

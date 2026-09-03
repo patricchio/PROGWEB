@@ -54,9 +54,7 @@
                 {if $current_player.lives > 0}
                     {if $current_player.answer}
                         <div class="panel answer-card confirmed-answer">
-                            <strong>Risposta confermata</strong>
                             <p>{$current_player.answer}</p>
-                            <small>La risposta è definitiva e non può più essere modificata.</small>
                         </div>
                     {else}
                         <form class="panel answer-card" method="post" action="{$base_url}/game/{$game->code}/answer" data-answer-form>

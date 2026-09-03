@@ -30,6 +30,9 @@ $routes = [
     ['GET', '#^/register$#', CAuth::class, 'showRegister'],
     ['POST', '#^/register$#', CAuth::class, 'register'],
     ['POST', '#^/logout$#', CAuth::class, 'logout'],
+    ['GET', '#^/admin$#', CAdmin::class, 'dashboard'],
+    ['POST', '#^/admin/game/([A-Za-z0-9]{6})/terminate$#', CAdmin::class, 'terminateGame'],
+    ['POST', '#^/admin/user/([0-9]+)/delete$#', CAdmin::class, 'deleteUser'],
 ];
 
 foreach ($routes as [$method, $pattern, $controllerClass, $action]) {
