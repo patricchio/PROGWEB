@@ -101,13 +101,7 @@ final class CGame
             if ($game === null || !$game->hasPlayer((int) $user['id'])) {
                 throw new DomainException('Non partecipi a questa partita.');
             }
-            $currentPlayer = null;
-            foreach ($game->state['players'] as $player) {
-                if ((int) $player['id'] === (int) $user['id']) {
-                    $currentPlayer = $player;
-                    break;
-                }
-            }
+            $currentPlayer = $game->players[(int) $user['id']] ?? null;
             $this->view->render('game.tpl', [
                 'page_title' => ($game->maxPlayers === 1 ? 'Single player' : 'Partita ' . $game->code) . ' - Death by AI',
                 'base_url' => $this->baseUrl,
@@ -133,7 +127,8 @@ final class CGame
         try {
             $manager = new FPersistentManager();
             $game = $this->requireHost($manager, $code, (int) $user['id']);
-            $scenario = (new FAIService())->createScenario($game);
+            $previousScenarios = $manager->recentScenarios($game->id);
+            $scenario = (new FAIService())->createScenario($previousScenarios, $game->round + 1);
             $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($user, $scenario): void {
                 if ($lockedGame->hostUserId !== (int) $user['id']) {
                     throw new DomainException('Solo l’host può iniziare.');
@@ -212,9 +207,8 @@ final class CGame
         try {
             $manager = new FPersistentManager();
             $game = $this->requireHost($manager, $code, (int) $user['id']);
-            $preview = clone $game;
-            $preview->state['round']++;
-            $scenario = (new FAIService())->createScenario($preview);
+            $previousScenarios = $manager->recentScenarios($game->id);
+            $scenario = (new FAIService())->createScenario($previousScenarios, $game->round + 1);
             $manager->mutateGame($game->code, static function (EGame $lockedGame) use ($user, $scenario): void {
                 if ($lockedGame->hostUserId !== (int) $user['id']) {
                     throw new DomainException('Solo l’host può continuare.');
@@ -256,12 +250,12 @@ final class CGame
             return;
         }
         $players = array_map(static fn (array $player): array => [
-            'id' => $player['id'], 'username' => $player['username'], 'lives' => $player['lives'],
+            'id' => $player['user_id'], 'username' => $player['username'], 'lives' => $player['lives'],
             'answered' => trim((string) ($player['answer'] ?? '')) !== '',
-        ], $game->state['players']);
-        $this->view->json(['status' => $game->status, 'phase' => $game->state['phase'],
-            'round' => $game->state['round'], 'players' => $players,
-            'deadline_at' => $game->state['deadline_at'] ?? null, 'server_time' => time()]);
+        ], array_values($game->players));
+        $this->view->json(['status' => $game->status, 'phase' => $game->phase,
+            'round' => $game->round, 'players' => $players,
+            'deadline_at' => $game->deadlineAt, 'server_time' => time()]);
     }
 
     /**

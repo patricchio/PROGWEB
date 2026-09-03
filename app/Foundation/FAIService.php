@@ -21,12 +21,11 @@ final class FAIService
 
     /**
      * Crea un nuovo scenario (pericolo mortale) usando l'intelligenza artificiale.
+     * $previousScenarios (dal più recente) evita che l'IA ripeta contenuti già usati;
+     * $roundNumber è il numero del turno che sta per iniziare, usato solo dal fallback.
      */
-    public function createScenario(EGame $game): string
+    public function createScenario(array $previousScenarios, int $roundNumber): string
     {
-        $previousScenarios = array_slice(array_values(array_filter(array_column(
-            $game->state['history'] ?? [], 'scenario'
-        ))), -5);
         $systemPrompt = <<<'PROMPT'
 Sei l'autore di carte per un gioco di sopravvivenza. Genera un pericolo originale nello stesso stile degli esempi: immediato, semplice, creativo e potenzialmente mortale.
 
@@ -88,7 +87,7 @@ PROMPT;
             }
         }
 
-        return $this->fallbackScenario($game);
+        return $this->fallbackScenario($roundNumber);
     }
 
     /** 
@@ -110,7 +109,7 @@ Ragiona in silenzio. Restituisci tutti e soli i player_id ricevuti, una sola vol
 PROMPT;
         $userPrompt = 'Valuta questi dati di gioco: '
             . json_encode([
-                'scenario' => $game->state['scenario'],
+                'scenario' => $game->scenario,
                 'players' => $players,
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -167,7 +166,7 @@ PROMPT;
                 : $player['username'] . ' perde una vita.';
             $userPrompt = 'Write the individual story from these data: '
                 . json_encode([
-                    'scenario' => $game->state['scenario'],
+                    'scenario' => $game->scenario,
                     'player' => $player,
                     'final_outcome' => $decision['outcome'],
                     'required_final_sentence' => $requiredEnding,
@@ -330,10 +329,10 @@ PROMPT;
     private function livingPlayers(EGame $game): array
     {
         $players = [];
-        foreach ($game->state['players'] as $player) {
+        foreach ($game->players as $player) {
             if ((int) $player['lives'] > 0) {
                 $players[] = [
-                    'player_id' => (int) $player['id'],
+                    'player_id' => (int) $player['user_id'],
                     'username' => (string) $player['username'],
                     'continuation' => (string) $player['answer'],
                 ];
@@ -487,7 +486,7 @@ PROMPT;
             $continuation = trim($player['continuation']);
             $missing = str_starts_with($continuation, '[NESSUNA RISPOSTA');
             $words = preg_split('/\s+/u', $continuation, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-            $seed = (string) $game->state['scenario'] . '|' . ($game->state['round'] ?? 0)
+            $seed = (string) $game->scenario . '|' . $game->round
                 . '|' . $continuation . '|' . $player['player_id'];
             $roll = hexdec(substr(hash('sha256', $seed), 0, 8)) % 100;
             $lose = $missing || count($words) < 4 || $roll < 50;
@@ -531,7 +530,7 @@ PROMPT;
     /**
      * Fornisce scenari prefissati se l'IA non riesce a generarli.
      */
-    private function fallbackScenario(EGame $game): string
+    private function fallbackScenario(int $roundNumber): string
     {
         $fallbacks = [
             'L’acqua invade il tunnel e blocca ogni uscita. Cosa fai?',
@@ -541,7 +540,7 @@ PROMPT;
             'Le fiamme circondano la stanza mentre il soffitto crolla. Cosa fai?',
             'Il ponte si spezza sopra un burrone profondissimo. Cosa fai?',
         ];
-        $index = max(0, ((int) ($game->state['round'] ?? 0)) - 1) % count($fallbacks);
+        $index = max(0, $roundNumber - 1) % count($fallbacks);
         return $fallbacks[$index];
     }
 

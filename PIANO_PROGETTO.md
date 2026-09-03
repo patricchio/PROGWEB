@@ -358,7 +358,7 @@ La sessione permette di ricordare informazioni del singolo browser, per esempio:
 
 La sessione di un giocatore, però, non è visibile agli altri giocatori. Non può quindi essere l'unico posto in cui conservare una partita multiplayer.
 
-Lo stato della partita deve essere condiviso e persistente. Per questo viene salvato nel database. È normale aggiornare una riga quando:
+Lo stato della partita deve essere condiviso e persistente. Per questo viene salvato nel database, su tabelle relazionali normalizzate invece che in un'unica colonna JSON. È normale aggiornare una o più righe quando:
 
 - entra un giocatore;
 - viene inviata una risposta;
@@ -366,9 +366,9 @@ Lo stato della partita deve essere condiviso e persistente. Per questo viene sal
 - cambia il numero di vite;
 - inizia il turno successivo.
 
-Questa non è una violazione delle slide: è precisamente il significato dello strato Foundation/Persistence. Per evitare un database complesso, tutta la partita viene conservata in una sola riga.
+Questa non è una violazione delle slide: è precisamente il significato dello strato Foundation/Persistence.
 
-### Due sole tabelle
+### Cinque tabelle relazionali
 
 #### Tabella `users`
 
@@ -380,62 +380,69 @@ Questa non è una violazione delle slide: è precisamente il significato dello s
 
 #### Tabella `games`
 
+Una riga per partita, con solo i metadati e il turno in corso:
+
 - `id`;
 - `code` - codice breve univoco;
 - `host_user_id`;
 - `status` - `LOBBY`, `ACTIVE` oppure `FINISHED`;
+- `phase` - `LOBBY`, `OPEN`, `EVALUATING`, `RESULTS` oppure `FINISHED`;
 - `max_players` - da 1 a 5;
 - `initial_lives` - da 1 a 3;
-- `scenario_type` e `scenario_value` - colonne legacy ignorate dall'applicazione e mantenute soltanto per compatibilità con il database esistente;
-- `state_json` - stato completo della partita;
-- `created_at`;
-- `updated_at`;
-- `finished_at`.
+- `round_duration_seconds`;
+- `round` - numero del turno corrente;
+- `rounds_played` - numero di turni già chiusi;
+- `scenario` - incipit del turno aperto;
+- `deadline_at` - timestamp di scadenza del turno aperto;
+- `winner_user_id`;
+- `created_at`, `updated_at`, `finished_at`.
 
-Non esistono tabelle separate per partecipanti, turni, risposte o giudizi.
+#### Tabella `game_players`
 
-### Contenuto di `state_json`
+Un giocatore per riga per partita:
 
-Esempio semplificato:
+- `id`;
+- `game_id`;
+- `user_id`;
+- `lives`;
+- `current_answer` - risposta del turno aperto, azzerata dopo la valutazione;
+- `joined_at`.
 
-```json
-{
-  "round": 2,
-  "scenario": "La stazione spaziale sta perdendo ossigeno.",
-  "players": {
-    "7": {"username": "Anna", "lives": 2},
-    "12": {"username": "Luca", "lives": 1}
-  },
-  "answers": {
-    "7": "Uso le bombole della tuta.",
-    "12": "Cerco di sigillare la falla."
-  },
-  "last_results": [
-    {"player_id": 7, "outcome": "SAFE", "story": "Anna usa la tuta e riesce a superare il pericolo."},
-    {"player_id": 12, "outcome": "LOSE_LIFE", "story": "Luca prova a sigillare la falla, ma viene sopraffatto e perde una vita."}
-  ],
-  "history": []
-}
-```
+#### Tabella `rounds`
 
-Alla fine di ogni turno il risultato viene aggiunto a `history`. Quando la partita termina, la stessa riga diventa anche il log finale della partita.
+Un turno chiuso e valutato per partita (sostituisce l'array `history` di una precedente versione basata su JSON):
+
+- `id`;
+- `game_id`;
+- `round_number`;
+- `scenario`;
+- `judgment_source`, `story_source`;
+- `created_at`.
+
+#### Tabella `round_results`
+
+Esito, risposta e racconto individuale di ogni giocatore per un turno chiuso:
+
+- `id`;
+- `round_id`;
+- `game_player_id`;
+- `answer`;
+- `outcome` - `SAFE` oppure `LOSE_LIFE`;
+- `story`;
+- `lives_after`.
 
 ### Aggiornamento sicuro della partita
 
 Per evitare che due richieste modifichino contemporaneamente lo stato:
 
-1. `FPersistentManager` apre una transazione;
-2. carica la riga della partita con blocco `FOR UPDATE`;
-3. ricostruisce `EGame` dal JSON;
-4. applica una sola operazione;
-5. salva il nuovo JSON;
+1. `FPersistentManager::mutateGame()` apre una transazione;
+2. carica la riga di `games` e le righe di `game_players` della partita con blocco `FOR UPDATE`;
+3. ricostruisce l'oggetto `EGame` dalle righe caricate;
+4. applica una sola operazione (per esempio `submitAnswer`, `applyResults`, `nextRound`);
+5. salva le tabelle coinvolte: `games` sempre, `game_players` per vite e risposte, `rounds`/`round_results` soltanto quando un turno è appena stato valutato;
 6. esegue il commit.
 
-È un meccanismo breve da implementare e facile da spiegare al professore.
-
-### Perché non usare un file JSON sul disco
-
-Un file sarebbe possibile, ma in multiplayer due richieste potrebbero scrivere nello stesso momento. MySQL gestisce già concorrenza, transazioni e blocco della riga. Usare una sola riga nel database è più semplice e più coerente con il corso.
+È un meccanismo breve da implementare e facile da spiegare al professore, e mostra concretamente più concetti relazionali (FK, transazioni, `FOR UPDATE`, cascata) rispetto a un'unica colonna JSON.
 
 ## 11. Sessione PHP
 
@@ -476,7 +483,7 @@ Si usa una sola classe `FAIService`. Il provider viene scelto nel file locale di
 
 `FAIService` espone tre operazioni semplici:
 
-- `createScenario(EGame $game): string` genera un incipit completo e di lunghezza uniforme;
+- `createScenario(array $previousScenarios, int $roundNumber): string` genera un incipit completo e di lunghezza uniforme, evitando gli scenari recenti passati esplicitamente da `CGame` (letti da `FPersistentManager::recentScenarios()`);
 - `evaluateSurvival(EGame $game): array` decide soltanto `SAFE` o `LOSE_LIFE`;
 - `generateStory(EGame $game, array $evaluation): array` racconta il verdetto già deciso senza modificarlo.
 
@@ -602,7 +609,7 @@ Quattro documenti brevi sono sufficienti:
    - modello di dominio;
    - diagramma delle nove classi;
    - livelli PCEF;
-   - due tabelle;
+   - le cinque tabelle relazionali;
    - URL principali.
 4. `04_test.pdf`
    - test del percorso principale;
@@ -656,15 +663,15 @@ Questa fase deve già produrre un gioco funzionante.
 Una demo breve:
 
 1. mostrare le cartelle PCEF;
-2. mostrare le due tabelle MySQL;
+2. mostrare le cinque tabelle MySQL;
 3. effettuare il login;
 4. creare una partita con vite e durata del turno;
 5. entrare con un secondo browser oppure avviare in single player;
 6. inviare le risposte;
 7. mostrare la chiamata AI e il JSON ricevuto;
 8. mostrare la perdita di una vita;
-9. mostrare la riga `games` aggiornata;
-10. mostrare il risultato finale e il log dei turni;
+9. mostrare le righe di `games`, `game_players` e `round_results` aggiornate;
+10. mostrare il risultato finale e il log dei turni in `rounds`;
 11. collegare un'operazione alla relativa URL, metodo Control, metodo Entity e persistenza.
 
 ## 19. Checklist finale
@@ -676,8 +683,8 @@ Una demo breve:
 - [ ] Nessun obbligo di perdere una vita a ogni turno.
 - [ ] Single player funzionante.
 - [ ] Invito multiplayer tramite codice.
-- [ ] Solo due tabelle MySQL.
-- [ ] Stato condiviso in una riga JSON della tabella `games`.
+- [ ] Database MySQL normalizzato su cinque tabelle relazionali (`users`, `games`, `game_players`, `rounds`, `round_results`).
+- [ ] Stato condiviso nelle tabelle di partita, aggiornato dentro transazioni con blocco di riga.
 - [ ] Nove classi applicative.
 - [ ] Presentation, Control, Entity e Foundation riconoscibili.
 - [ ] Sessione limitata ai dati del singolo utente.
@@ -697,7 +704,7 @@ La soluzione semplice e corretta è:
 ```text
 sessione PHP = identità del singolo utente
 database users = account permanenti
-database games.state_json = stato condiviso della partita
+database games / game_players / rounds / round_results = stato condiviso della partita
 Entity EGame = regole e logica di gioco
 ```
 

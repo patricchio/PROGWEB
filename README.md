@@ -7,7 +7,7 @@ Il progetto è volutamente essenziale: PHP 8, MySQL/MariaDB, Smarty, CSS e JavaS
 ## Avvio con XAMPP
 
 1. Aprire il pannello XAMPP e avviare **Apache** e **MySQL**.
-2. Importare [`database/schema.sql`](database/schema.sql) da phpMyAdmin. Lo script crea il database `death_by_ai` e due sole tabelle.
+2. Importare [`database/schema.sql`](database/schema.sql) da phpMyAdmin. Lo script crea il database `death_by_ai` e le sue tabelle relazionali (ricreandole se già presenti).
 3. Se l’utente MySQL `root` ha una password, copiare `config/config.local.example.php` in `config/config.local.php` e inserirla. Il file locale è escluso da Git.
 4. Aprire `http://localhost/PROGWEB/`.
 
@@ -69,16 +69,17 @@ Il servizio assegna agli scenari un budget sufficiente e scarta le risposte term
 
 - `$_SESSION` conserva soltanto l’identità dell’utente, il token CSRF e i messaggi temporanei.
 - La partita deve essere condivisa da browser e utenti diversi; quindi non può vivere solo nella RAM o nella sessione dell’host.
-- La tabella `games` contiene una riga per partita e il campo `state_json` conserva lobby, vite, scenario, risposte, esiti e cronologia.
-- Una modifica del gioco aggiorna quella singola riga dentro una transazione.
-- A fine partita la stessa riga rimane come resoconto permanente.
+- Lo stato della partita è normalizzato su più tabelle relazionali: `games` (metadati e turno corrente), `game_players` (vite e risposta di ogni giocatore), `rounds` e `round_results` (cronologia dei turni chiusi e verdetti).
+- Ogni mutazione del gioco (`FPersistentManager::mutateGame`) apre una transazione, blocca con `FOR UPDATE` la riga di `games` e le righe di `game_players` coinvolte, applica una sola operazione e aggiorna le tabelle interessate prima del commit.
+- A fine partita le righe restano come resoconto permanente, incluso lo storico dei turni in `rounds`/`round_results`.
 
-Le due tabelle sono:
+Le tabelle sono:
 
 - `users`: account e password cifrate con `password_hash()`;
-- `games`: configurazione e stato JSON della partita.
-
-Non esistono tabelle separate per partecipanti, turni, risposte o giudizi.
+- `games`: configurazione e stato corrente della partita (fase, turno, scenario, timer);
+- `game_players`: un giocatore per riga per partita, con vite e risposta del turno aperto;
+- `rounds`: un turno chiuso e valutato per partita;
+- `round_results`: esito, risposta e racconto individuale di ogni giocatore per un turno chiuso.
 
 ## Struttura essenziale
 
@@ -110,7 +111,7 @@ Sono **9 classi applicative**. I template Smarty si trovano in `templates/`, CSS
 - racconto personalizzato per ogni risposta e lettura text-to-speech del browser;
 - eliminazione delle partite non concluse, riservata all’host e con conferma;
 - spettatore a zero vite, turni successivi, vincitore o pareggio;
-- cronologia conservata in `games.state_json`.
+- cronologia conservata nelle tabelle `rounds` e `round_results`.
 
 Per provare due utenti sullo stesso computer bisogna usare due browser, due profili oppure una finestra anonima: le normali schede dello stesso browser condividono il cookie di sessione PHP.
 

@@ -5,16 +5,36 @@ declare(strict_types=1);
 final class EGame
 {
     /**
+     * Round in attesa di persistenza (impostato da applyResults, consumato da
+     * FPersistentManager::mutateGame). Non fa parte dello stato permanente
+     * dell'entità: viene azzerato non appena il turno è stato salvato.
+     */
+    public ?array $pendingRound = null;
+
+    /**
      * Inizializza un'istanza della partita con tutti i suoi dati e stato.
+     * $players è indicizzato per user_id.
      */
     public function __construct(
         public int $id,
         public string $code,
         public int $hostUserId,
         public string $status,
+        public string $phase,
         public int $maxPlayers,
         public int $initialLives,
-        public array $state
+        public int $roundDurationSeconds,
+        public int $round,
+        public int $roundsPlayed,
+        public ?string $scenario,
+        public ?int $deadlineAt,
+        public ?int $winnerUserId,
+        public ?string $winnerUsername,
+        public array $players,
+        public array $lastResults,
+        public string $lastJudgmentSource = 'fallback',
+        public string $lastStorySource = 'fallback',
+        public ?int $playerCount = null
     ) {
     }
 
@@ -24,40 +44,62 @@ final class EGame
     public static function create(string $code, array $host, int $maxPlayers, int $lives,
         int $roundDuration = 30): self
     {
-        return new self(0, $code, (int) $host['id'], 'LOBBY', $maxPlayers, $lives,
-            [
-                'phase' => 'LOBBY',
-                'round' => 0,
-                'round_duration_seconds' => $roundDuration,
-                'deadline_at' => null,
-                'scenario' => null,
-                'players' => [[
-                    'id' => (int) $host['id'],
-                    'username' => (string) $host['username'],
-                    'lives' => $lives,
-                    'answer' => null,
-                ]],
-                'last_results' => [],
-                'history' => [],
-            ]);
+        $hostId = (int) $host['id'];
+        return new self(
+            0, $code, $hostId, 'LOBBY', 'LOBBY', $maxPlayers, $lives, $roundDuration,
+            0, 0, null, null, null, null,
+            [$hostId => [
+                'game_player_id' => 0,
+                'user_id' => $hostId,
+                'username' => (string) $host['username'],
+                'lives' => $lives,
+                'answer' => null,
+            ]],
+            []
+        );
     }
 
     /**
-     * Ricostruisce un oggetto partita a partire dai dati letti dal database.
+     * Ricostruisce un oggetto partita a partire dalla riga di `games` e dai
+     * giocatori/risultati già caricati da FPersistentManager.
      */
-    public static function fromRow(array $row): self
+    public static function fromRow(array $row, array $players, array $lastResults,
+        string $lastJudgmentSource = 'fallback', string $lastStorySource = 'fallback'): self
     {
-        $state = json_decode((string) $row['state_json'], true, 512, JSON_THROW_ON_ERROR);
-        $state += [
-            'round_duration_seconds' => 30,
-            'deadline_at' => null,
-            'last_ai_source' => 'fallback',
-            'last_judgment_source' => $state['last_ai_source'] ?? 'fallback',
-            'last_story_source' => $state['last_ai_source'] ?? 'fallback',
-        ];
-        return new self((int) $row['id'], (string) $row['code'], (int) $row['host_user_id'],
-            (string) $row['status'], (int) $row['max_players'], (int) $row['initial_lives'],
-            $state);
+        $winnerUserId = $row['winner_user_id'] !== null ? (int) $row['winner_user_id'] : null;
+        $winnerUsername = $winnerUserId !== null ? ($players[$winnerUserId]['username'] ?? null) : null;
+
+        return new self(
+            (int) $row['id'],
+            (string) $row['code'],
+            (int) $row['host_user_id'],
+            (string) $row['status'],
+            (string) $row['phase'],
+            (int) $row['max_players'],
+            (int) $row['initial_lives'],
+            (int) $row['round_duration_seconds'],
+            (int) $row['round'],
+            (int) $row['rounds_played'],
+            $row['scenario'] !== null ? (string) $row['scenario'] : null,
+            $row['deadline_at'] !== null ? (int) $row['deadline_at'] : null,
+            $winnerUserId,
+            $winnerUsername,
+            $players,
+            $lastResults,
+            $lastJudgmentSource,
+            $lastStorySource
+        );
+    }
+
+    /**
+     * Ricostruisce una versione leggera (senza giocatori né risultati) usata
+     * per gli elenchi, con il solo conteggio dei partecipanti.
+     */
+    public static function fromSummaryRow(array $row): self
+    {
+        $game = self::fromRow($row, [], []);
+        $game->playerCount = (int) $row['player_count'];
+        return $game;
     }
 
     /**
@@ -68,14 +110,16 @@ final class EGame
         if ($this->status !== 'LOBBY') {
             throw new DomainException('La partita è già iniziata.');
         }
-        if ($this->playerIndex((int) $user['id']) !== null) {
+        $userId = (int) $user['id'];
+        if (isset($this->players[$userId])) {
             return;
         }
-        if (count($this->state['players']) >= $this->maxPlayers) {
+        if (count($this->players) >= $this->maxPlayers) {
             throw new DomainException('La lobby è piena.');
         }
-        $this->state['players'][] = [
-            'id' => (int) $user['id'],
+        $this->players[$userId] = [
+            'game_player_id' => 0,
+            'user_id' => $userId,
             'username' => (string) $user['username'],
             'lives' => $this->initialLives,
             'answer' => null,
@@ -91,10 +135,10 @@ final class EGame
             throw new DomainException('La partita è già iniziata.');
         }
         $this->status = 'ACTIVE';
-        $this->state['phase'] = 'OPEN';
-        $this->state['round'] = 1;
-        $this->state['scenario'] = $scenario;
-        $this->state['deadline_at'] = time() + (int) $this->state['round_duration_seconds'];
+        $this->phase = 'OPEN';
+        $this->round = 1;
+        $this->scenario = $scenario;
+        $this->deadlineAt = time() + $this->roundDurationSeconds;
     }
 
     /**
@@ -102,20 +146,19 @@ final class EGame
      */
     public function submitAnswer(int $userId, string $answer, bool $automatic = false): void
     {
-        if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'OPEN') {
+        if ($this->status !== 'ACTIVE' || $this->phase !== 'OPEN') {
             throw new DomainException('Il turno non accetta risposte.');
         }
-        $index = $this->playerIndex($userId);
-        if ($index === null || $this->state['players'][$index]['lives'] <= 0) {
+        if (!isset($this->players[$userId]) || $this->players[$userId]['lives'] <= 0) {
             throw new DomainException('Non puoi rispondere in questa partita.');
         }
-        if (trim((string) ($this->state['players'][$index]['answer'] ?? '')) !== '') {
+        if (trim((string) ($this->players[$userId]['answer'] ?? '')) !== '') {
             throw new DomainException('La risposta è già stata confermata e non può essere modificata.');
         }
         if ($this->isDeadlineExpired() && !$automatic) {
             throw new DomainException('Il tempo è scaduto: la risposta non può più essere confermata manualmente.');
         }
-        $this->state['players'][$index]['answer'] = $answer;
+        $this->players[$userId]['answer'] = $answer;
     }
 
     /**
@@ -123,16 +166,16 @@ final class EGame
      */
     public function prepareEvaluation(): void
     {
-        if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'OPEN') {
+        if ($this->status !== 'ACTIVE' || $this->phase !== 'OPEN') {
             throw new DomainException('Il turno è già in valutazione.');
         }
-        foreach ($this->state['players'] as &$player) {
+        foreach ($this->players as &$player) {
             if ($player['lives'] > 0 && trim((string) ($player['answer'] ?? '')) === '') {
                 $player['answer'] = '[NESSUNA RISPOSTA ENTRO IL TEMPO]';
             }
         }
         unset($player);
-        $this->state['phase'] = 'EVALUATING';
+        $this->phase = 'EVALUATING';
     }
 
     /**
@@ -141,7 +184,7 @@ final class EGame
     public function applyResults(array $results, string $judgmentSource = 'fallback',
         string $storySource = 'fallback'): void
     {
-        if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'EVALUATING') {
+        if ($this->status !== 'ACTIVE' || $this->phase !== 'EVALUATING') {
             throw new DomainException('Il turno non può essere valutato.');
         }
 
@@ -151,11 +194,11 @@ final class EGame
         }
 
         $roundResults = [];
-        foreach ($this->state['players'] as &$player) {
+        foreach ($this->players as $userId => &$player) {
             if ($player['lives'] <= 0) {
                 continue;
             }
-            $result = $resultMap[(int) $player['id']] ?? null;
+            $result = $resultMap[$userId] ?? null;
             if ($result === null) {
                 throw new DomainException('La valutazione AI è incompleta.');
             }
@@ -167,7 +210,7 @@ final class EGame
                 $player['lives'] = max(0, (int) $player['lives'] - 1);
             }
             $roundResults[] = [
-                'player_id' => (int) $player['id'],
+                'user_id' => $userId,
                 'username' => (string) $player['username'],
                 'outcome' => (string) $result['outcome'],
                 'answer' => (string) $player['answer'],
@@ -178,31 +221,35 @@ final class EGame
         }
         unset($player);
 
-        $record = [
-            'round' => (int) $this->state['round'],
-            'scenario' => (string) $this->state['scenario'],
+        $this->pendingRound = [
+            'round_number' => $this->round,
+            'scenario' => (string) $this->scenario,
+            'judgment_source' => $judgmentSource,
+            'story_source' => $storySource,
             'results' => $roundResults,
         ];
-        $this->state['last_results'] = $roundResults;
-        $this->state['last_scenario'] = (string) $this->state['scenario'];
-        $this->state['last_judgment_source'] = $judgmentSource;
-        $this->state['last_story_source'] = $storySource;
-        $this->state['last_ai_source'] = $judgmentSource === $storySource
-            ? $judgmentSource : 'mixed';
-        $record['judgment_source'] = $judgmentSource;
-        $record['story_source'] = $storySource;
-        $record['ai_source'] = $this->state['last_ai_source'];
-        $this->state['history'][] = $record;
+        $this->lastResults = array_map(static fn (array $result): array => [
+            'player_id' => $result['user_id'],
+            'username' => $result['username'],
+            'outcome' => $result['outcome'],
+            'answer' => $result['answer'],
+            'story' => $result['story'],
+            'lives' => $result['lives'],
+        ], $roundResults);
+        $this->lastJudgmentSource = $judgmentSource;
+        $this->lastStorySource = $storySource;
+        $this->roundsPlayed++;
 
-        $alive = array_values(array_filter($this->state['players'],
+        $alive = array_values(array_filter($this->players,
             static fn (array $player): bool => (int) $player['lives'] > 0));
-        $finished = count($this->state['players']) === 1 ? count($alive) === 0 : count($alive) <= 1;
+        $finished = count($this->players) === 1 ? count($alive) === 0 : count($alive) <= 1;
         if ($finished) {
             $this->status = 'FINISHED';
-            $this->state['phase'] = 'FINISHED';
-            $this->state['winner'] = count($alive) === 1 ? $alive[0]['username'] : null;
+            $this->phase = 'FINISHED';
+            $this->winnerUserId = count($alive) === 1 ? (int) $alive[0]['user_id'] : null;
+            $this->winnerUsername = count($alive) === 1 ? (string) $alive[0]['username'] : null;
         } else {
-            $this->state['phase'] = 'RESULTS';
+            $this->phase = 'RESULTS';
         }
     }
 
@@ -211,14 +258,14 @@ final class EGame
      */
     public function nextRound(string $scenario): void
     {
-        if ($this->status !== 'ACTIVE' || $this->state['phase'] !== 'RESULTS') {
+        if ($this->status !== 'ACTIVE' || $this->phase !== 'RESULTS') {
             throw new DomainException('Non è possibile aprire un nuovo turno.');
         }
-        $this->state['round']++;
-        $this->state['scenario'] = $scenario;
-        $this->state['phase'] = 'OPEN';
-        $this->state['deadline_at'] = time() + (int) $this->state['round_duration_seconds'];
-        $this->state['last_results'] = [];
+        $this->round++;
+        $this->scenario = $scenario;
+        $this->phase = 'OPEN';
+        $this->deadlineAt = time() + $this->roundDurationSeconds;
+        $this->lastResults = [];
     }
 
     /**
@@ -226,7 +273,7 @@ final class EGame
      */
     public function hasPlayer(int $userId): bool
     {
-        return $this->playerIndex($userId) !== null;
+        return isset($this->players[$userId]);
     }
 
     /**
@@ -234,20 +281,7 @@ final class EGame
      */
     public function isDeadlineExpired(?int $now = null): bool
     {
-        $deadline = (int) ($this->state['deadline_at'] ?? 0);
-        return $deadline > 0 && ($now ?? time()) >= $deadline;
-    }
-
-    /**
-     * Cerca un giocatore tramite il suo ID e restituisce l'indice nell'array.
-     */
-    private function playerIndex(int $userId): ?int
-    {
-        foreach ($this->state['players'] as $index => $player) {
-            if ((int) $player['id'] === $userId) {
-                return $index;
-            }
-        }
-        return null;
+        return $this->deadlineAt !== null && $this->deadlineAt > 0
+            && ($now ?? time()) >= $this->deadlineAt;
     }
 }

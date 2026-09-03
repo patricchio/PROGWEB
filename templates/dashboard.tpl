@@ -63,7 +63,7 @@
                         <a class="recent-card-link" href="{$base_url}/game/{$recent->code}">
                             <span class="recent-code">{if $recent->maxPlayers === 1}Single player{else}{$recent->code}{/if}</span>
                             <strong>{if $recent->status === 'LOBBY'}Lobby{elseif $recent->status === 'ACTIVE'}In corso{else}Conclusa{/if}</strong>
-                            <small>{$recent->state.players|count} giocatore/i · {$recent->state.history|count} turni</small>
+                            <small>{$recent->playerCount} giocatore/i · {$recent->roundsPlayed} turni</small>
                         </a>
                         {if $recent->status !== 'FINISHED'}
                             <button class="delete-game" type="button" data-delete-game="{$recent->code}" data-delete-label="{if $recent->maxPlayers === 1}Single player{else}{$recent->code}{/if}" aria-label="Elimina {if $recent->maxPlayers === 1}la partita single player{else}la partita {$recent->code}{/if}">×</button>
