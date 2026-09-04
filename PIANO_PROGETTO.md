@@ -2,7 +2,6 @@
 
 ## 1. Obiettivo
 
-Realizzare con XAMPP un gioco web semplice, funzionante e presentabile all'esame.
 
 Un utente registrato può creare una partita da solo oppure invitare fino a quattro amici tramite un codice. A ogni turno viene mostrato uno scenario pericoloso e ogni giocatore ancora in gioco scrive come pensa di sopravvivere. Un servizio AI valuta le risposte e decide, per ogni giocatore, se è salvo oppure perde una vita.
 

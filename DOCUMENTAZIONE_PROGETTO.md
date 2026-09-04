@@ -383,3 +383,27 @@ Lo script vitale per il caricamento dinamico della partita. Si assicura che il t
 
 **Fine della documentazione.**
 Questa analisi dettagliata riga per riga di tutto il codice sorgente (Controller, Modelli, Entità, Views, e Frontend) fornisce una panoramica completa, a scopo didattico, della struttura del progetto e delle sue logiche architetturali.
+
+---
+
+## 9. Aggiornamento: Normalizzazione del Database (Nuove Modifiche)
+
+Il codice e il database hanno subìto un'importante modifica architetturale. Inizialmente, l'intero stato della partita era probabilmente salvato in modo denormalizzato o compresso (es. json). Ora il DB è stato perfettamente normalizzato in tabelle relazionali distinte, migliorando la pulizia e l'eleganza del progetto senza risultare eccessivamente "over-engineered". Le pratiche utilizzate rispettano pienamente le convenzioni didattiche (Model-View-Controller e Pattern Entity).
+
+### Nuova Struttura Relazionale
+1. **games**: Contiene solo i metadati generali della partita (codice, host, numero di vite iniziali, giocatore vincitore). Non contiene più lo stato del turno attivo.
+2. **game_players**: Gestisce la relazione molti-a-molti tra games e users. Tiene traccia di quanti giocatori partecipano e delle loro vite rimanenti (una colonna dedicata e facilmente aggiornabile).
+3. **rounds**: Ogni volta che l'host avvia un nuovo round (Fase "OPEN"), viene creata una nuova riga in questa tabella. Memorizza lo scenario generato dall'IA, la scadenza (deadline_at) e lo stato specifico di quel turno (OPEN, EVALUATING, COMPLETED).
+4. **round_results**: La tabella più granulare. Per ogni round e per ogni giocatore, viene inserita una riga. Quando l'utente invia la propria risposta testuale per sopravvivere, questa finisce nel campo nswer. Dopo la valutazione dell'IA, la stessa riga viene aggiornata con l'esito (outcome = SAFE/LOSE_LIFE), il racconto personalizzato (story) e le vite calcolate post-danno (lives_after).
+
+### Modifiche alle Entità e ai Manager (Riga per Riga)
+- **EGame.php**: I campi della classe sono stati estesi e frammentati. Oltre alle vecchie proprietà, EGame ora mappa i dati combinati provenienti dalle JOIN del DB: $currentRoundId, $roundStatus, $scenario. Questo evita di dover fare query multiple quando il Controller ha bisogno dell'intero stato per il frontend.
+- **FPersistentManager.php / loadGame**: I metodi di caricamento (load) adesso utilizzano istruzioni JOIN su MySQL per "assemblare" la partita partendo dalle righe frammentate in games, ounds, game_players e ound_results. 
+- **CGame.php**: La logica del controller è rimasta fluida. Quando un utente fa l'azione (es. submitAnswer), il controller chiama il manager che esegue un semplice UPDATE round_results SET answer = .... Non ci sono più enormi JSON da parsare e ricodificare.
+
+### Conformità e Stile
+Il codice modificato è **ben scritto** e aderisce rigorosamente alle "slide" del corso:
+- Non abusa di costrutti PHP avanzati fuori programma (niente Traits complessi o Reflection).
+- Il routing e la separazione dei livelli restano immutati (Control parla con Foundation per il DB e passa i dati a Presentation).
+- La scelta di normalizzare il database in tabelle separate per i round e i risultati è il corretto approccio accademico per gestire la molteplicità (1 partita -> N round -> N risultati_giocatore).
+
