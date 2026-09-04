@@ -6,8 +6,8 @@ var game = document.querySelector('[data-game-code]');
 if (game) {
     // Salva lo stato iniziale per verificare futuri cambiamenti
     var initial = {
-        phase: game.dataset.gamePhase,
-        round: Number(game.dataset.gameRound),
+        roundStatus: game.dataset.roundStatus,
+        roundNumber: Number(game.dataset.roundNumber),
         players: document.querySelectorAll('.player-list > li').length,
     };
     var timer = game.querySelector('[data-round-timer]');
@@ -118,7 +118,9 @@ if (game) {
             if (!response.ok) return;
             var state = await response.json();
             // Se la fase, il turno o il numero di giocatori cambia, ricarica la pagina
-            if (state.phase !== initial.phase || state.round !== initial.round || state.players.length !== initial.players) {
+            if (state.round_status !== initial.roundStatus
+                || state.round_number !== initial.roundNumber
+                || state.players.length !== initial.players) {
                 window.location.reload();
             }
         } catch (e) {

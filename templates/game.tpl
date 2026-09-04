@@ -1,7 +1,7 @@
-<section class="game-shell" data-game-code="{$game->code}" data-game-phase="{$game->phase}" data-game-round="{$game->round}" data-deadline-at="{$game->deadlineAt|default:0}" data-server-time="{$server_time}" data-single-player="{if $game->maxPlayers === 1}1{else}0{/if}" data-confirmation-grace="{$automatic_confirmation_grace}">
+<section class="game-shell" data-game-code="{$game->code}" data-round-status="{$game->roundStatus|default:''}" data-round-number="{$game->roundNumber}" data-deadline-at="{$game->deadlineAt|default:0}" data-server-time="{$server_time}" data-single-player="{if $game->maxPlayers === 1}1{else}0{/if}" data-confirmation-grace="{$automatic_confirmation_grace}">
     <header class="game-heading">
         <div>
-            <h1>{if $game->status === 'LOBBY'}La lobby è pronta.{elseif $game->status === 'FINISHED'}Partita conclusa.{else}Turno {$game->round}{/if}</h1>
+            <h1>{if $game->status === 'LOBBY'}La lobby è pronta.{elseif $game->status === 'FINISHED'}Partita conclusa.{else}Turno {$game->roundNumber}{/if}</h1>
         </div>
         <a class="text-link" href="{$base_url}/">← Dashboard</a>
     </header>
@@ -42,7 +42,7 @@
                         <div class="waiting"><span></span> In attesa che l’host inizi...</div>
                     {/if}
                 </article>
-            {elseif $game->phase === 'OPEN'}
+            {elseif $game->roundStatus === 'OPEN'}
                 <article class="panel scenario-card">
                     <div class="preview-topline">
                         <span>Incipit</span>
@@ -71,15 +71,15 @@
                 <div class="waiting"><span></span> {if $game->maxPlayers === 1}La risposta verrà valutata appena la confermi.{else}Il verdetto partirà automaticamente allo scadere del timer.{/if}</div>
                 <form method="post" action="{$base_url}/game/{$game->code}/evaluate" data-auto-evaluate hidden>
                 </form>
-            {elseif $game->phase === 'EVALUATING'}
+            {elseif $game->roundStatus === 'EVALUATING'}
                 <article class="panel evaluating-card">
                     <span class="eyebrow">Tempo scaduto</span>
                     <h2>L'AI sta valutando le risposte...</h2>
                 </article>
-            {elseif $game->phase === 'RESULTS' || ($game->status === 'FINISHED' && $game->lastResults)}
+            {elseif $game->roundStatus === 'COMPLETED' && $game->lastResults}
                 <article class="panel verdict-card">
                     <div class="verdict-topline">
-                        <span class="eyebrow">Verdetto del turno {$game->round}</span>
+                        <span class="eyebrow">Verdetto del turno {$game->roundNumber}</span>
                     </div>
                     <ul class="result-list" data-verdict-text>
                         {foreach $game->lastResults as $result}

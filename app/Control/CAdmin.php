@@ -61,11 +61,7 @@ class CAdmin
         
         try {
             (new FPersistentManager())->mutateGame(strtoupper($code), function ($game) {
-                if ($game->status === 'FINISHED') {
-                    throw new Exception('La partita è già terminata.');
-                }
-                $game->status = 'FINISHED';
-                $game->phase = 'FINISHED';
+                $game->terminate();
             });
             FSession::flash('success', 'Partita ' . strtoupper($code) . ' terminata forzatamente.');
         } catch (Exception $e) {

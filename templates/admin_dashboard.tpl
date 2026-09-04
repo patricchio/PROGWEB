@@ -15,8 +15,8 @@
                         <li style="display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <strong>{$g->code}</strong> 
-                                <small>{$g->status} - {$g->phase}</small><br>
-                                <span class="field-help">Giocatori: {$g->playerCount} | Turno: {$g->round}</span>
+                                <small>{$g->status}</small><br>
+                                <span class="field-help">Giocatori: {$g->playerCount} | Turni completati: {$g->roundsPlayed}</span>
                             </div>
                             <form method="post" action="{$base_url}/admin/game/{$g->code}/terminate" style="margin:0;">
                                 <button type="submit" class="button button-danger button-small" onclick="return confirm('Vuoi davvero forzare la chiusura di questa partita?');">Termina</button>

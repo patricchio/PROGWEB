@@ -21,20 +21,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Una riga per partita: solo metadati e stato corrente del turno in gioco.
+-- Una riga per partita: configurazione, stato generale e risultato finale.
 CREATE TABLE games (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     code CHAR(6) NOT NULL UNIQUE,
     host_user_id INT UNSIGNED NOT NULL,
     status ENUM('LOBBY', 'ACTIVE', 'FINISHED') NOT NULL DEFAULT 'LOBBY',
-    phase ENUM('LOBBY', 'OPEN', 'EVALUATING', 'RESULTS', 'FINISHED') NOT NULL DEFAULT 'LOBBY',
     max_players TINYINT UNSIGNED NOT NULL,
     initial_lives TINYINT UNSIGNED NOT NULL,
     round_duration_seconds SMALLINT UNSIGNED NOT NULL DEFAULT 30,
-    round INT UNSIGNED NOT NULL DEFAULT 0,
     rounds_played INT UNSIGNED NOT NULL DEFAULT 0,
-    scenario TEXT NULL,
-    deadline_at INT UNSIGNED NULL,
     winner_user_id INT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -47,13 +43,12 @@ CREATE TABLE games (
     INDEX idx_games_status (status)
 ) ENGINE=InnoDB;
 
--- Un giocatore per riga per partita: vite correnti e risposta del turno aperto.
+-- Un giocatore per riga per partita: partecipazione e vite correnti.
 CREATE TABLE game_players (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     game_id INT UNSIGNED NOT NULL,
     user_id INT UNSIGNED NOT NULL,
     lives TINYINT UNSIGNED NOT NULL,
-    current_answer VARCHAR(700) NULL,
     joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id)
         REFERENCES games(id) ON DELETE CASCADE,
@@ -62,29 +57,31 @@ CREATE TABLE game_players (
     UNIQUE KEY uniq_game_player (game_id, user_id)
 ) ENGINE=InnoDB;
 
--- Un turno chiuso e valutato per partita (sostituisce l'array "history" del JSON).
+-- Ogni turno viene creato quando si apre e conserva il proprio stato.
 CREATE TABLE rounds (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     game_id INT UNSIGNED NOT NULL,
     round_number INT UNSIGNED NOT NULL,
+    status ENUM('OPEN', 'EVALUATING', 'COMPLETED', 'CANCELLED') NOT NULL DEFAULT 'OPEN',
     scenario TEXT NOT NULL,
-    judgment_source VARCHAR(20) NOT NULL,
-    story_source VARCHAR(20) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deadline_at INT UNSIGNED NOT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL,
     FOREIGN KEY (game_id)
         REFERENCES games(id) ON DELETE CASCADE,
     UNIQUE KEY uniq_game_round (game_id, round_number)
 ) ENGINE=InnoDB;
 
--- Esito e racconto individuale di ogni giocatore per un turno chiuso.
+-- Risposta e successivo esito di un giocatore nello specifico turno.
 CREATE TABLE round_results (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     round_id INT UNSIGNED NOT NULL,
     game_player_id INT UNSIGNED NOT NULL,
-    answer VARCHAR(700) NOT NULL,
-    outcome ENUM('SAFE', 'LOSE_LIFE') NOT NULL,
-    story TEXT NOT NULL,
-    lives_after TINYINT UNSIGNED NOT NULL,
+    answer VARCHAR(700) NULL,
+    answered_at DATETIME NULL,
+    outcome ENUM('SAFE', 'LOSE_LIFE') NULL,
+    story TEXT NULL,
+    lives_after TINYINT UNSIGNED NULL,
     FOREIGN KEY (round_id)
         REFERENCES rounds(id) ON DELETE CASCADE,
     FOREIGN KEY (game_player_id)

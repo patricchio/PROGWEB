@@ -130,7 +130,7 @@ class CGame
             $manager = new FPersistentManager();
             $game = $this->requireHost($manager, $code, (int) $user['id']);
             $previousScenarios = $manager->recentScenarios($game->id);
-            $scenario = (new FAIService())->createScenario($previousScenarios, $game->round + 1);
+            $scenario = (new FAIService())->createScenario($previousScenarios, $game->roundNumber + 1);
             $manager->mutateGame($game->code, function ($lockedGame) use ($user, $scenario) {
                 if ($lockedGame->hostUserId !== (int) $user['id']) {
                     throw new DomainException('Solo l’host può iniziare.');
@@ -207,7 +207,7 @@ class CGame
             $manager = new FPersistentManager();
             $game = $this->requireHost($manager, $code, (int) $user['id']);
             $previousScenarios = $manager->recentScenarios($game->id);
-            $scenario = (new FAIService())->createScenario($previousScenarios, $game->round + 1);
+            $scenario = (new FAIService())->createScenario($previousScenarios, $game->roundNumber + 1);
             $manager->mutateGame($game->code, function ($lockedGame) use ($user, $scenario) {
                 if ($lockedGame->hostUserId !== (int) $user['id']) {
                     throw new DomainException('Solo l’host può continuare.');
@@ -251,8 +251,8 @@ class CGame
             'id' => $player['user_id'], 'username' => $player['username'], 'lives' => $player['lives'],
             'answered' => trim((string) ($player['answer'] ?? '')) !== '',
         ]; }, array_values($game->players));
-        $this->view->json(['status' => $game->status, 'phase' => $game->phase,
-            'round' => $game->round, 'players' => $players,
+        $this->view->json(['status' => $game->status, 'round_status' => $game->roundStatus,
+            'round_number' => $game->roundNumber, 'players' => $players,
             'deadline_at' => $game->deadlineAt, 'server_time' => time()]);
     }
 
@@ -293,11 +293,7 @@ class CGame
         $evaluation = $ai->evaluateSurvival($claimedGame);
         $judgment = $ai->generateStory($claimedGame, $evaluation);
         $manager->mutateGame($game->code, function ($lockedGame) use ($judgment) {
-            $lockedGame->applyResults(
-                $judgment['results'],
-                (string) ($judgment['judgment_source'] ?? 'fallback'),
-                (string) ($judgment['story_source'] ?? 'fallback')
-            );
+            $lockedGame->applyResults($judgment['results']);
         });
     }
 

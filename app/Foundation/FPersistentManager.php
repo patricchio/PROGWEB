@@ -59,14 +59,13 @@ class FPersistentManager
         $this->database->beginTransaction();
         try {
             $statement = $this->database->prepare(
-                'INSERT INTO games (code, host_user_id, status, phase, max_players, initial_lives, round_duration_seconds)
-                 VALUES (:code, :host, :status, :phase, :max_players, :lives, :round_duration)'
+                'INSERT INTO games (code, host_user_id, status, max_players, initial_lives, round_duration_seconds)
+                 VALUES (:code, :host, :status, :max_players, :lives, :round_duration)'
             );
             $statement->execute([
                 'code' => $game->code,
                 'host' => $game->hostUserId,
                 'status' => $game->status,
-                'phase' => $game->phase,
                 'max_players' => $game->maxPlayers,
                 'lives' => $game->initialLives,
                 'round_duration' => $game->roundDurationSeconds,
@@ -74,15 +73,14 @@ class FPersistentManager
             $game->id = (int) $this->database->lastInsertId();
 
             $insertPlayer = $this->database->prepare(
-                'INSERT INTO game_players (game_id, user_id, lives, current_answer)
-                 VALUES (:game_id, :user_id, :lives, :answer)'
+                'INSERT INTO game_players (game_id, user_id, lives)
+                 VALUES (:game_id, :user_id, :lives)'
             );
             foreach ($game->players as &$player) {
                 $insertPlayer->execute([
                     'game_id' => $game->id,
                     'user_id' => $player['user_id'],
                     'lives' => $player['lives'],
-                    'answer' => $player['answer'],
                 ]);
                 $player['game_player_id'] = (int) $this->database->lastInsertId();
             }
@@ -98,10 +96,7 @@ class FPersistentManager
         }
     }
 
-    /**
-     * Cerca una partita in base al suo codice a 6 caratteri, con giocatori e
-     * (se disponibile) l'ultimo turno valutato.
-     */
+    /** Cerca una partita con giocatori, ultimo round e relativi risultati. */
     public function findGameByCode(string $code): ?EGame
     {
         return $this->loadGame($code, false);
@@ -230,13 +225,12 @@ class FPersistentManager
     }
 
     /**
-     * Carica una partita completa (riga games, giocatori e, se in fase RESULTS
-     * o FINISHED, l'ultimo turno valutato). Con $lock true, blocca le righe
-     * coinvolte con FOR UPDATE per l'uso dentro una transazione.
+     * Carica una partita completa. Con $lock true blocca le righe coinvolte
+     * per mantenere atomiche le modifiche allo stato della partita.
      */
     private function loadGame(string $code, bool $lock): ?EGame
     {
-        $suffix = '';
+        $suffix = $lock ? ' FOR UPDATE' : '';
 
         $statement = $this->database->prepare("SELECT * FROM games WHERE code = :code$suffix");
         $statement->execute(['code' => $code]);
@@ -245,12 +239,24 @@ class FPersistentManager
             return null;
         }
 
+        $roundStatement = $this->database->prepare(
+            "SELECT * FROM rounds WHERE game_id = :game_id
+             ORDER BY round_number DESC LIMIT 1$suffix"
+        );
+        $roundStatement->execute(['game_id' => $gameRow['id']]);
+        $roundRow = $roundStatement->fetch();
+        $roundRow = $roundRow === false ? null : $roundRow;
+        $roundId = $roundRow !== null ? (int) $roundRow['id'] : 0;
+
         $playersStatement = $this->database->prepare(
-            "SELECT gp.id AS game_player_id, gp.user_id, u.username, gp.lives, gp.current_answer
-             FROM game_players gp JOIN users u ON u.id = gp.user_id
+            "SELECT gp.id AS game_player_id, gp.user_id, u.username, gp.lives, rr.answer
+             FROM game_players gp
+             JOIN users u ON u.id = gp.user_id
+             LEFT JOIN round_results rr
+               ON rr.game_player_id = gp.id AND rr.round_id = :round_id
              WHERE gp.game_id = :game_id ORDER BY gp.id ASC$suffix"
         );
-        $playersStatement->execute(['game_id' => $gameRow['id']]);
+        $playersStatement->execute(['game_id' => $gameRow['id'], 'round_id' => $roundId]);
         $players = [];
         foreach ($playersStatement->fetchAll() as $playerRow) {
             $players[(int) $playerRow['user_id']] = [
@@ -258,78 +264,59 @@ class FPersistentManager
                 'user_id' => (int) $playerRow['user_id'],
                 'username' => (string) $playerRow['username'],
                 'lives' => (int) $playerRow['lives'],
-                'answer' => $playerRow['current_answer'],
+                'answer' => $playerRow['answer'],
             ];
         }
 
         $lastResults = [];
-        $judgmentSource = 'fallback';
-        $storySource = 'fallback';
-        if (in_array($gameRow['phase'], ['RESULTS', 'FINISHED'], true)) {
-            $roundStatement = $this->database->prepare(
-                'SELECT id, judgment_source, story_source FROM rounds
-                 WHERE game_id = :game_id ORDER BY round_number DESC LIMIT 1'
+        if ($roundRow !== null && $roundRow['status'] === 'COMPLETED') {
+            $resultsStatement = $this->database->prepare(
+                'SELECT rr.answer, rr.outcome, rr.story, rr.lives_after, gp.user_id, u.username
+                 FROM round_results rr
+                 JOIN game_players gp ON gp.id = rr.game_player_id
+                 JOIN users u ON u.id = gp.user_id
+                 WHERE rr.round_id = :round_id AND rr.outcome IS NOT NULL
+                 ORDER BY rr.id ASC'
             );
-            $roundStatement->execute(['game_id' => $gameRow['id']]);
-            $roundRow = $roundStatement->fetch();
-            if ($roundRow !== false) {
-                $judgmentSource = (string) $roundRow['judgment_source'];
-                $storySource = (string) $roundRow['story_source'];
-                $resultsStatement = $this->database->prepare(
-                    'SELECT rr.answer, rr.outcome, rr.story, rr.lives_after, gp.user_id, u.username
-                     FROM round_results rr
-                     JOIN game_players gp ON gp.id = rr.game_player_id
-                     JOIN users u ON u.id = gp.user_id
-                     WHERE rr.round_id = :round_id ORDER BY rr.id ASC'
-                );
-                $resultsStatement->execute(['round_id' => $roundRow['id']]);
-                foreach ($resultsStatement->fetchAll() as $resultRow) {
-                    $lastResults[] = [
-                        'player_id' => (int) $resultRow['user_id'],
-                        'username' => (string) $resultRow['username'],
-                        'outcome' => (string) $resultRow['outcome'],
-                        'answer' => (string) $resultRow['answer'],
-                        'story' => (string) $resultRow['story'],
-                        'lives' => (int) $resultRow['lives_after'],
-                    ];
-                }
+            $resultsStatement->execute(['round_id' => $roundId]);
+            foreach ($resultsStatement->fetchAll() as $resultRow) {
+                $lastResults[] = [
+                    'player_id' => (int) $resultRow['user_id'],
+                    'username' => (string) $resultRow['username'],
+                    'outcome' => (string) $resultRow['outcome'],
+                    'answer' => (string) $resultRow['answer'],
+                    'story' => (string) $resultRow['story'],
+                    'lives' => (int) $resultRow['lives_after'],
+                ];
             }
         }
 
-        return EGame::fromRow($gameRow, $players, $lastResults, $judgmentSource, $storySource);
+        return EGame::fromRow($gameRow, $players, $lastResults, $roundRow);
     }
 
-    /**
-     * Persiste una partita già caricata: riga games, giocatori modificati o
-     * nuovi e, se presente, il turno appena valutato da applyResults().
-     */
+    /** Persiste partita, giocatori, round corrente, risposte ed esiti. */
     private function saveGame(EGame $game): void
     {
         $update = $this->database->prepare(
-            'UPDATE games SET status = :status, phase = :phase, round = :round,
-             rounds_played = :rounds_played, scenario = :scenario, deadline_at = :deadline_at,
-             winner_user_id = :winner_user_id,
+            'UPDATE games SET status = :status, rounds_played = :rounds_played,
+             winner_user_id = :winner_user_id, updated_at = NOW(),
              finished_at = IF(:finished_status = "FINISHED", COALESCE(finished_at, NOW()), finished_at)
              WHERE id = :id'
         );
         $update->execute([
             'status' => $game->status,
-            'phase' => $game->phase,
-            'round' => $game->round,
             'rounds_played' => $game->roundsPlayed,
-            'scenario' => $game->scenario,
-            'deadline_at' => $game->deadlineAt,
             'winner_user_id' => $game->winnerUserId,
             'finished_status' => $game->status,
             'id' => $game->id,
         ]);
 
         $insertPlayer = $this->database->prepare(
-            'INSERT INTO game_players (game_id, user_id, lives, current_answer)
-             VALUES (:game_id, :user_id, :lives, :answer)'
+            'INSERT INTO game_players (game_id, user_id, lives)
+             VALUES (:game_id, :user_id, :lives)'
         );
         $updatePlayer = $this->database->prepare(
-            'UPDATE game_players SET lives = :lives, current_answer = :answer WHERE id = :id'
+            'UPDATE game_players SET lives = :lives WHERE id = :id'
         );
         foreach ($game->players as &$player) {
             if ($player['game_player_id'] === 0) {
@@ -337,49 +324,79 @@ class FPersistentManager
                     'game_id' => $game->id,
                     'user_id' => $player['user_id'],
                     'lives' => $player['lives'],
-                    'answer' => $player['answer'],
                 ]);
                 $player['game_player_id'] = (int) $this->database->lastInsertId();
             } else {
                 $updatePlayer->execute([
                     'lives' => $player['lives'],
-                    'answer' => $player['answer'],
                     'id' => $player['game_player_id'],
                 ]);
             }
         }
         unset($player);
 
-        if ($game->pendingRound !== null) {
-            $round = $game->pendingRound;
+        if ($game->roundStatus === null) {
+            return;
+        }
+
+        if ((int) $game->currentRoundId === 0) {
             $insertRound = $this->database->prepare(
-                'INSERT INTO rounds (game_id, round_number, scenario, judgment_source, story_source)
-                 VALUES (:game_id, :round_number, :scenario, :judgment_source, :story_source)'
+                'INSERT INTO rounds (game_id, round_number, status, scenario, deadline_at)
+                 VALUES (:game_id, :round_number, :status, :scenario, :deadline_at)'
             );
             $insertRound->execute([
                 'game_id' => $game->id,
-                'round_number' => $round['round_number'],
-                'scenario' => $round['scenario'],
-                'judgment_source' => $round['judgment_source'],
-                'story_source' => $round['story_source'],
+                'round_number' => $game->roundNumber,
+                'status' => $game->roundStatus,
+                'scenario' => $game->scenario,
+                'deadline_at' => $game->deadlineAt,
             ]);
-            $roundId = (int) $this->database->lastInsertId();
+            $game->currentRoundId = (int) $this->database->lastInsertId();
+        }
 
-            $insertResult = $this->database->prepare(
-                'INSERT INTO round_results (round_id, game_player_id, answer, outcome, story, lives_after)
-                 VALUES (:round_id, :game_player_id, :answer, :outcome, :story, :lives_after)'
-            );
-            foreach ($round['results'] as $result) {
-                $insertResult->execute([
-                    'round_id' => $roundId,
-                    'game_player_id' => $game->players[$result['user_id']]['game_player_id'],
-                    'answer' => $result['answer'],
-                    'outcome' => $result['outcome'],
-                    'story' => $result['story'],
-                    'lives_after' => $result['lives'],
-                ]);
+        $updateRound = $this->database->prepare(
+            'UPDATE rounds SET status = :status, scenario = :scenario,
+             deadline_at = :deadline_at, completed_at = :completed_at WHERE id = :id'
+        );
+        $updateRound->execute([
+            'status' => $game->roundStatus,
+            'scenario' => $game->scenario,
+            'deadline_at' => $game->deadlineAt,
+            'completed_at' => $game->roundCompletedAt,
+            'id' => $game->currentRoundId,
+        ]);
+
+        $saveAnswer = $this->database->prepare(
+            'INSERT INTO round_results (round_id, game_player_id, answer, answered_at)
+             VALUES (:round_id, :game_player_id, :answer, :answered_at)
+             ON DUPLICATE KEY UPDATE answer = VALUES(answer),
+             answered_at = COALESCE(answered_at, VALUES(answered_at))'
+        );
+        foreach ($game->players as $player) {
+            if ($player['answer'] === null) {
+                continue;
             }
-            $game->pendingRound = null;
+            $missed = substr((string) $player['answer'], 0, 17) === '[NESSUNA RISPOSTA';
+            $saveAnswer->execute([
+                'round_id' => $game->currentRoundId,
+                'game_player_id' => $player['game_player_id'],
+                'answer' => $player['answer'],
+                'answered_at' => $missed ? null : date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        $saveResult = $this->database->prepare(
+            'UPDATE round_results SET outcome = :outcome, story = :story,
+             lives_after = :lives_after WHERE round_id = :round_id AND game_player_id = :game_player_id'
+        );
+        foreach ($game->lastResults as $result) {
+            $saveResult->execute([
+                'outcome' => $result['outcome'],
+                'story' => $result['story'],
+                'lives_after' => $result['lives'],
+                'round_id' => $game->currentRoundId,
+                'game_player_id' => $game->players[$result['player_id']]['game_player_id'],
+            ]);
         }
     }
 }

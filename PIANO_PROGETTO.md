@@ -380,20 +380,16 @@ Questa non è una violazione delle slide: è precisamente il significato dello s
 
 #### Tabella `games`
 
-Una riga per partita, con solo i metadati e il turno in corso:
+Una riga per partita, con configurazione, stato generale e risultato finale:
 
 - `id`;
 - `code` - codice breve univoco;
 - `host_user_id`;
 - `status` - `LOBBY`, `ACTIVE` oppure `FINISHED`;
-- `phase` - `LOBBY`, `OPEN`, `EVALUATING`, `RESULTS` oppure `FINISHED`;
 - `max_players` - da 1 a 5;
 - `initial_lives` - da 1 a 3;
 - `round_duration_seconds`;
-- `round` - numero del turno corrente;
 - `rounds_played` - numero di turni già chiusi;
-- `scenario` - incipit del turno aperto;
-- `deadline_at` - timestamp di scadenza del turno aperto;
 - `winner_user_id`;
 - `created_at`, `updated_at`, `finished_at`.
 
@@ -405,28 +401,29 @@ Un giocatore per riga per partita:
 - `game_id`;
 - `user_id`;
 - `lives`;
-- `current_answer` - risposta del turno aperto, azzerata dopo la valutazione;
 - `joined_at`.
 
 #### Tabella `rounds`
 
-Un turno chiuso e valutato per partita (sostituisce l'array `history` di una precedente versione basata su JSON):
+Un turno per partita, creato appena viene mostrato lo scenario:
 
 - `id`;
 - `game_id`;
 - `round_number`;
+- `status` - `OPEN`, `EVALUATING`, `COMPLETED` oppure `CANCELLED`;
 - `scenario`;
-- `judgment_source`, `story_source`;
-- `created_at`.
+- `deadline_at`;
+- `started_at`, `completed_at`.
 
 #### Tabella `round_results`
 
-Esito, risposta e racconto individuale di ogni giocatore per un turno chiuso:
+Risposta e successivo esito individuale di un giocatore nello specifico turno:
 
 - `id`;
 - `round_id`;
 - `game_player_id`;
 - `answer`;
+- `answered_at`;
 - `outcome` - `SAFE` oppure `LOSE_LIFE`;
 - `story`;
 - `lives_after`.
