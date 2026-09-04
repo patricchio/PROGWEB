@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * Classe che rappresenta un utente nel sistema.
+ */
 class EUser
 {
     public $id;

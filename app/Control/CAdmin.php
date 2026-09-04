@@ -5,12 +5,18 @@ class CAdmin
     private $view;
     private $baseUrl;
 
+    /**
+     * Costruttore: riceve la vista e l'URL base del sito.
+     */
     public function __construct($view, $baseUrl)
     {
         $this->view = $view;
         $this->baseUrl = $baseUrl;
     }
 
+    /**
+     * Verifica che l'utente corrente sia loggato e abbia i privilegi di amministratore.
+     */
     private function requireAdmin()
     {
         $user = FSession::user();
@@ -21,6 +27,9 @@ class CAdmin
         return $user;
     }
 
+    /**
+     * Mostra la dashboard di amministrazione con le partite attive e la lista degli utenti.
+     */
     public function dashboard(): void
     {
         $this->requireAdmin();
@@ -43,6 +52,9 @@ class CAdmin
         ]);
     }
 
+    /**
+     * Termina forzatamente una partita in corso specificata tramite il suo codice.
+     */
     public function terminateGame(string $code): void
     {
         $this->requireAdmin();
@@ -64,6 +76,9 @@ class CAdmin
         exit;
     }
 
+    /**
+     * Elimina un utente dal sistema, impedendo all'amministratore di eliminare se stesso.
+     */
     public function deleteUser(string $id): void
     {
         $admin = $this->requireAdmin();

@@ -1,118 +1,53 @@
-# Death by AI — progetto di Programmazione Web
+App: Death by AI (Party/Survival Game Narrativo)
 
-Gioco narrativo web per **1-5 giocatori**. A ogni turno l’AI propone un incipit di vita o di morte, i giocatori continuano la storia spiegando come reagiscono e il giudice decide se ciascuno è salvo oppure perde una vita.
+Descrizione: 
 
-Il progetto è volutamente essenziale: PHP 8, MySQL/MariaDB, Smarty, CSS e JavaScript, con architettura Presentation-Control-Entity-Foundation e Front Controller unico.
+L'applicazione Death by AI è un videogioco web multiplayer basato su meccaniche di sopravvivenza ed esplorazione narrativa testuale. L'app permette agli utenti (da 1 a 5) di affrontarsi in partite a turni, dove una Intelligenza Artificiale agisce come game master e giudice. A ogni round, l'IA genera proceduralmente un nuovo scenario di pericolo mortale; i giocatori devono scrivere e inviare un'azione testuale descrivendo come intendono salvarsi. Il sistema calcola gli esiti automaticamente (decretando chi sopravvive e chi perde una vita) accompagnati da un racconto testuale narrativo dell'evento. Include inoltre meccaniche come configurazione del timer e delle vite, lobby con codici di accesso, aggiornamenti asincroni in tempo reale.
 
-## Avvio con XAMPP
+Tipologie di utenti: 
 
-1. Aprire il pannello XAMPP e avviare **Apache** e **MySQL**.
-2. Importare [`database/schema.sql`](database/schema.sql) da phpMyAdmin. Lo script crea il database `death_by_ai` e le sue tabelle relazionali (ricreandole se già presenti).
-3. Se l’utente MySQL `root` ha una password, copiare `config/config.local.example.php` in `config/config.local.php` e inserirla. Il file locale è escluso da Git.
-4. Aprire `http://localhost/PROGWEB/`.
+Amministratore 
 
-Credenziali predefinite XAMPP usate dall’applicazione: host `127.0.0.1`, porta `3306`, utente `root`, password vuota.
+Giocatore (Utente registrato) 
 
-## Configurazione AI
+Ospite (Utente non registrato) 
 
-Le chiamate partono sempre dal server PHP: chiavi e prompt non vengono esposti al browser.
+Funzioni degli utenti: 
 
-### OpenAI API
+Ospite (Utente non registrato): 
+- ha la possibilità di registrarsi creando il proprio account;
+- ha la possibilità di effettuare il login o navigare nella homepage per comprendere il funzionamento generale.
 
-Nel file `config/config.local.php`:
+Giocatore (Utente registrato): 
+- tutte le funzionalità offerte all'ospite (utente non registrato);
+- può creare una nuova partita scegliendo le impostazioni iniziali (numero massimo di vite, durata del timer del round);
+- può partecipare a una partita in lobby inserendo il codice univoco di 6 lettere;
+- può leggere l'esito degli eventi generati (scenari di pericolo e resoconti narrativi) interagendo con l'interfaccia a schermo;
+- può decidere e scrivere la propria azione successiva in formato testuale libero per cercare di sopravvivere alla minaccia del turno, prima dello scadere del tempo;
+- subisce aggiornamenti automatici delle proprie statistiche nel database (es. riduzione dei Punti Vita) calcolati dal giudice IA.
 
-```php
-'ai' => [
-    'provider' => 'openai',
-    'openai_api_key' => 'INSERIRE_LA_CHIAVE_API',
-    'openai_model' => 'gpt-4o-mini',
-    'max_output_tokens' => 700,
-],
-```
+Amministratore: 
+- accede a una dashboard dedicata in cui può osservare la lista di tutte le partite in corso;
+- gestisce le partite (può terminare e chiudere anticipatamente i game fermi o inattivi);
+- gestisce il database degli utenti registrati (visualizzazione, eliminazione degli account).
 
-La chiave è una chiave della **OpenAI API**, non la password né l’abbonamento ChatGPT. `config/config.local.php` è già predisposto ed è escluso da Git. `gpt-4o-mini` è usato per contenere il costo; il limite d’uscita viene inoltre adattato al numero di giocatori.
 
-### Ollama locale
+RESPONSABILITA’: 
 
-```php
-'ai' => [
-    'provider' => 'ollama',
-    'ollama_url' => 'http://127.0.0.1:11434',
-    'ollama_model' => 'llama3',
-],
-```
+PHP: backend interazione con database e logica completa del gioco 
+- Gestione della creazione della partita e dei codici di invito (Lobby)
+- Calcolare le vite rimanenti dei giocatori
+- Gestire il timer e il flusso asincrono dei turni di gioco (Fasi OPEN, EVALUATING, RESULTS)
+- Interazione tramite Web Service/API con un'IA esterna (OpenAI) o AI in locale (Ollama)
+- Verificare i vincitori finali e smistare lo stato della partita
+- Login, validazione form e gestione Sessioni.
 
-Per attivarlo basta commentare la configurazione OpenAI e decommentare il blocco Ollama già presente in `config/config.local.php`. Avviare Ollama e scaricare il modello con `ollama pull llama3`.
+Creazione degli oggetti (Pattern Entity): 
+- User
+- Game
 
-Il provider effettivamente usato è quello indicato da `provider`. Se il servizio AI non risponde durante una dimostrazione, entra automaticamente in funzione un giudice simulato con lo stesso formato JSON. In questo modo il flusso resta presentabile anche senza rete.
+JSON: per inviare e ricevere informazioni in modo formattato e strettamente tipizzato tra il server PHP e l'Intelligenza Artificiale, e per esporre le API usate dal frontend (polling di gioco).
 
-### Come viene usata l’AI
+JAVASCRIPT/CSS/HTML: frontend interfaccia grafica (pattern Presentation con motore Smarty), animazioni CSS per il timer, e utilizzo di JavaScript puro (Vanilla JS) per l'aggiornamento automatico della pagina e la manipolazione base del DOM.
 
-La generazione dell’incipit è volutamente flessibile per permettere di sperimentare con il prompt. PHP accetta testo semplice, una stringa JSON, `{"scenario":"..."}` e anche il precedente formato `setup`/`danger`; normalizza soltanto gli spazi e aggiunge `Cosa fai?` se manca. Non tronca il testo. Per evitare che Llama ripeta sempre le anomalie del corpo, il servizio alterna internamente cinque macro-categorie non visibili al giocatore, mentre contenuto e formulazione restano generati dall’AI. Il fallback viene usato soltanto se il servizio non risponde oppure restituisce un risultato vuoto o chiaramente incompleto dopo tre tentativi.
-
-Dopo la risposta dei giocatori, la valutazione avviene in due fasi distinte:
-
-1. `evaluateSurvival()` confronta incipit e continuazione e restituisce soltanto `SAFE` oppure `LOSE_LIFE`;
-2. `generateStory()` riceve il verdetto già fissato e richiede separatamente una narrazione di 5 frasi per ciascun giocatore, senza poter cambiare chi perde la vita. Accetta le varianti JSON comuni di Ollama e riprova soltanto se il testo è davvero vuoto, non valido o troncato.
-
-Nella schermata del risultato vengono mostrate soltanto le narrazioni individuali, senza ripetere prima incipit e risposta. Le sorgenti di giudizio e narrazione sono indicate separatamente, così un eventuale fallback è immediatamente identificabile.
-
-Forma e lunghezza degli incipit dipendono dal prompt corrente. I racconti individuali richiesti all’AI sono di 5 frasi e circa 60-90 parole. Le temperature sono costanti interne a `FAIService` e non sono modificabili dal giocatore:
-
-- scenario: `0.50`, per ottenere carte brevi e semplici senza perdere varietà;
-- verdetto: `0.05`, per privilegiare stabilità e severità;
-- racconto: `0.45`, per mantenere la prosa naturale senza contraddire il risultato già deciso.
-
-Il servizio assegna agli scenari un budget sufficiente e scarta le risposte terminate per esaurimento dei token o con puntini di sospensione finali: un testo chiaramente incompleto non viene quindi mostrato al giocatore.
-
-## Perché il database viene aggiornato durante la partita
-
-- `$_SESSION` conserva soltanto l’identità dell’utente, il token CSRF e i messaggi temporanei.
-- La partita deve essere condivisa da browser e utenti diversi; quindi non può vivere solo nella RAM o nella sessione dell’host.
-- Lo stato della partita è normalizzato su più tabelle relazionali: `games` (metadati e turno corrente), `game_players` (vite e risposta di ogni giocatore), `rounds` e `round_results` (cronologia dei turni chiusi e verdetti).
-- Ogni mutazione del gioco (`FPersistentManager::mutateGame`) apre una transazione, blocca con `FOR UPDATE` la riga di `games` e le righe di `game_players` coinvolte, applica una sola operazione e aggiorna le tabelle interessate prima del commit.
-- A fine partita le righe restano come resoconto permanente, incluso lo storico dei turni in `rounds`/`round_results`.
-
-Le tabelle sono:
-
-- `users`: account e password cifrate con `password_hash()`;
-- `games`: configurazione e stato corrente della partita (fase, turno, scenario, timer);
-- `game_players`: un giocatore per riga per partita, con vite e risposta del turno aperto;
-- `rounds`: un turno chiuso e valutato per partita;
-- `round_results`: esito, risposta e racconto individuale di ogni giocatore per un turno chiuso.
-
-## Struttura essenziale
-
-```text
-app/
-├── Presentation/VView.php
-├── Control/CAuth.php, CGame.php
-├── Entity/EUser.php, EGame.php
-└── Foundation/FDatabase.php, FSession.php,
-               FPersistentManager.php, FAIService.php
-```
-
-Sono **9 classi applicative**. I template Smarty si trovano in `templates/`, CSS e JavaScript in `public/`, lo schema in `database/`.
-
-## Funzioni già implementate
-
-- registrazione, login e logout;
-- password hash, sessioni, CSRF, prepared statement ed escaping Smarty;
-- creazione partita con 1-5 giocatori, 1-3 vite e timer configurabile;
-- nuovo incipit casuale di vita o di morte generato autonomamente dall’AI a ogni turno;
-- incipit completi di lunghezza uniforme, rigenerati invece di essere troncati;
-- codice invito e lobby soltanto nelle partite multiplayer;
-- single player senza codice invito visibile;
-- timer scelto dall’host tra 10 e 60 secondi e conferma automatica del testo alla scadenza;
-- risposta definitiva dopo la conferma, valutazione immediata in single player e polling asincrono con Fetch;
-- giudizio AI `SAFE`/`LOSE_LIFE` basato su incipit e continuazione, senza perdite obbligatorie;
-- verdetto e racconto generati in due passaggi separati;
-- formato dell’incipit modificabile liberamente dal prompt, senza dover cambiare il validatore;
-- racconto personalizzato per ogni risposta e lettura text-to-speech del browser;
-- eliminazione delle partite non concluse, riservata all’host e con conferma;
-- spettatore a zero vite, turni successivi, vincitore o pareggio;
-- cronologia conservata nelle tabelle `rounds` e `round_results`.
-
-Per provare due utenti sullo stesso computer bisogna usare due browser, due profili oppure una finestra anonima: le normali schede dello stesso browser condividono il cookie di sessione PHP.
-
-Il piano progettuale completo e coerente con le dispense è in [`PIANO_PROGETTO.md`](PIANO_PROGETTO.md).
+MYSQL: database (tabelle relazionali, chiavi esterne e aggiornamento stati transazionali).

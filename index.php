@@ -1,19 +1,25 @@
 <?php
 
-
+/**
+ * Punto di ingresso principale dell'applicazione (Front Controller).
+ * Carica l'autoloader e avvia la sessione.
+ */
 require_once __DIR__ . '/autoload.php';
 
 FSession::start();
 
+// Inizializza la view e recupera le informazioni sulla richiesta corrente
 $view = new VView(__DIR__);
 $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 
+// Rimuove il basePath dal percorso della richiesta se presente
 if ($basePath !== '' && $basePath !== '/' && strpos($requestPath, $basePath) === 0) {
     $requestPath = substr($requestPath, strlen($basePath)) ?: '/';
 }
 
+// Definizione delle rotte dell'applicazione (Metodo HTTP, Espressione regolare, Controller, Azione)
 $routes = [
     ['GET', '#^/$#', CGame::class, 'home'],
     ['POST', '#^/games$#', CGame::class, 'create'],
@@ -35,16 +41,19 @@ $routes = [
     ['POST', '#^/admin/user/([0-9]+)/delete$#', CAdmin::class, 'deleteUser'],
 ];
 
+// Cicla attraverso le rotte per trovare una corrispondenza con la richiesta corrente
 foreach ($routes as [$method, $pattern, $controllerClass, $action]) {
     if ($requestMethod === $method && preg_match($pattern, $requestPath, $matches) === 1) {
-        array_shift($matches);
-        $controller = new $controllerClass($view, $basePath);
+        array_shift($matches); // Rimuove il match completo, tenendo solo i gruppi catturati
+        $controller = new $controllerClass($view, $basePath); // Istanzia il controller appropriato
         $params = array_values($matches);
+        // Richiama l'azione del controller passando i parametri catturati dall'URL
         call_user_func_array([$controller, $action], $params);
         exit;
     }
 }
 
+// Se nessuna rotta corrisponde, imposta il codice HTTP 404 e mostra la pagina di errore
 http_response_code(404);
 $view->render('error.tpl', [
     'page_title' => 'Pagina non trovata',

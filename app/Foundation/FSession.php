@@ -13,7 +13,7 @@ class FSession
     }
 
     /**
-     * Esegue il login dell'utente salvandolo in sessione e rigenerando l'ID per sicurezza.
+     * Esegue il login dell'utente salvandolo in sessione.
      */
     public static function login(EUser $user): void
     {

@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Classe che rappresenta l'entità di una partita (Game), memorizzando il suo stato,
+ * i partecipanti e le regole di base.
+ */
 class EGame
 {
     /**
@@ -9,31 +13,55 @@ class EGame
      */
     public ?array $pendingRound = null;
 
+    public $id;
+    public $code;
+    public $hostUserId;
+    public $status;
+    public $phase;
+    public $maxPlayers;
+    public $initialLives;
+    public $roundDurationSeconds;
+    public $round;
+    public $roundsPlayed;
+    public $scenario;
+    public $deadlineAt;
+    public $winnerUserId;
+    public $winnerUsername;
+    public $players;
+    public $lastResults;
+    public $lastJudgmentSource;
+    public $lastStorySource;
+    public $playerCount;
+
     /**
      * Inizializza un'istanza della partita con tutti i suoi dati e stato.
      * $players è indicizzato per user_id.
      */
     public function __construct(
-        public int $id,
-        public string $code,
-        public int $hostUserId,
-        public string $status,
-        public string $phase,
-        public int $maxPlayers,
-        public int $initialLives,
-        public int $roundDurationSeconds,
-        public int $round,
-        public int $roundsPlayed,
-        public ?string $scenario,
-        public ?int $deadlineAt,
-        public ?int $winnerUserId,
-        public ?string $winnerUsername,
-        public array $players,
-        public array $lastResults,
-        public string $lastJudgmentSource = 'fallback',
-        public string $lastStorySource = 'fallback',
-        public ?int $playerCount = null
+        $id, $code, $hostUserId, $status, $phase, $maxPlayers, $initialLives,
+        $roundDurationSeconds, $round, $roundsPlayed, $scenario, $deadlineAt,
+        $winnerUserId, $winnerUsername, $players, $lastResults,
+        $lastJudgmentSource = 'fallback', $lastStorySource = 'fallback', $playerCount = null
     ) {
+        $this->id = $id;
+        $this->code = $code;
+        $this->hostUserId = $hostUserId;
+        $this->status = $status;
+        $this->phase = $phase;
+        $this->maxPlayers = $maxPlayers;
+        $this->initialLives = $initialLives;
+        $this->roundDurationSeconds = $roundDurationSeconds;
+        $this->round = $round;
+        $this->roundsPlayed = $roundsPlayed;
+        $this->scenario = $scenario;
+        $this->deadlineAt = $deadlineAt;
+        $this->winnerUserId = $winnerUserId;
+        $this->winnerUsername = $winnerUsername;
+        $this->players = $players;
+        $this->lastResults = $lastResults;
+        $this->lastJudgmentSource = $lastJudgmentSource;
+        $this->lastStorySource = $lastStorySource;
+        $this->playerCount = $playerCount;
     }
 
     /**
@@ -167,6 +195,7 @@ class EGame
         if ($this->status !== 'ACTIVE' || $this->phase !== 'OPEN') {
             return;
         }
+        // Assegna una risposta vuota ai giocatori inattivi
         foreach ($this->players as &$player) {
             if ($player['lives'] > 0 && trim((string) ($player['answer'] ?? '')) === '') {
                 $player['answer'] = '[NESSUNA RISPOSTA ENTRO IL TEMPO]';
@@ -186,12 +215,14 @@ class EGame
             throw new DomainException('Il turno non può essere valutato.');
         }
 
+        // Indicizza i risultati per ID giocatore
         $resultMap = [];
         foreach ($results as $result) {
             $resultMap[(int) $result['player_id']] = $result;
         }
 
         $roundResults = [];
+        // Applica l'esito per ciascun giocatore ancora in vita
         foreach ($this->players as $userId => &$player) {
             if ($player['lives'] <= 0) {
                 continue;
@@ -219,6 +250,7 @@ class EGame
         }
         unset($player);
 
+        // Salva i risultati del turno per la persistenza
         $this->pendingRound = [
             'round_number' => $this->round,
             'scenario' => (string) $this->scenario,
@@ -238,6 +270,7 @@ class EGame
         $this->lastStorySource = $storySource;
         $this->roundsPlayed++;
 
+        // Determina se la partita è finita
         $alive = array_values(array_filter($this->players,
             function ($player) { return (int) $player['lives'] > 0; }));
         $finished = count($this->players) === 1 ? count($alive) === 0 : count($alive) <= 1;

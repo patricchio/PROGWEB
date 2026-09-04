@@ -3,11 +3,11 @@
 
 class FPersistentManager
 {
+    private $database;
+
     /**
      * Inizializza il gestore usando la connessione PDO fornita o quella di default.
      */
-    private $database;
-
     public function __construct($database = null)
     {
         $this->database = $database !== null ? $database : FDatabase::connection();
