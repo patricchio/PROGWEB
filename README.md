@@ -51,3 +51,18 @@ JSON: per inviare e ricevere informazioni in modo formattato e strettamente tipi
 JAVASCRIPT/CSS/HTML: frontend interfaccia grafica (pattern Presentation con motore Smarty), animazioni CSS per il timer, e utilizzo di JavaScript puro (Vanilla JS) per l'aggiornamento automatico della pagina e la manipolazione base del DOM.
 
 MYSQL: database (tabelle relazionali, chiavi esterne e aggiornamento stati transazionali).
+
+
+PUBBLICAZIONE GRATUITA CON OLLAMA:
+
+Il progetto include una configurazione per pubblicare temporaneamente la demo
+dal PC Windows senza esporre phpMyAdmin, il resto di XAMPP o la porta di Ollama.
+Con MySQL e Ollama gia avviati, eseguire dalla cartella del progetto:
+
+```powershell
+.\scripts\Start-PublicDemo.ps1
+```
+
+Lo script mostra l'URL pubblico e le credenziali temporanee. Per arrestare la
+demo usare `.\scripts\Stop-PublicDemo.ps1`. La spiegazione completa si trova in
+`GUIDA_HOSTING_OLLAMA.md`.

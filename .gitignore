@@ -1,5 +1,7 @@
 /config/config.local.php
 /storage/
+/.runtime/
+/.tools/
 /.idea/
 /.vscode/
 *.log
